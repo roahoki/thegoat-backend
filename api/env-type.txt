@@ -1,0 +1,4 @@
+DB_USERNAME = username | usuario de postgres
+DB_PASSWORD = password | contraseña del usuario de postgres
+DB_NAME = db_name | nombre de la base de datos (revisar archivo config.js)
+DB_HOST = host // db para docker | localhost para local
