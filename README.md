@@ -1,2 +1,2 @@
-# # Entrega 1: The goat bet 🐐⚽📊💸
+#  Entrega 1: The goat bet 🐐⚽📊💸
 
