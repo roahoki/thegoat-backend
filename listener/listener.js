@@ -43,7 +43,7 @@ function connectToBroker() {
         const parsedMessage = JSON.parse(message.toString());
 
         // Enviar el mensaje como JSON a la API
-        axios.post('http://api:3000/fixtures/update', parsedMessage, {
+        axios.post('http://localhost:3000/fixtures/update', parsedMessage, {
             headers: {
                 'Content-Type': 'application/json'
             }
