@@ -129,4 +129,33 @@ router.get("/:id", async (ctx) => {
     ctx.body = request;
 });
 
+// Endpoint para manejar la validación de una request
+router.patch("/validate", async (ctx) => {
+    try {
+        const { request_id, group_id, seller, valid } = ctx.request.body;
+
+        // Verificar si la request existe
+        const request = await Request.findOne({ where: { request_id } });
+
+        if (!request) {
+            ctx.status = 404;
+            ctx.body = { error: "Request not found" };
+            return;
+        }
+
+        // Actualizar el estado de la request basado en el valor de "valid"
+        const newStatus = valid ? "accepted" : "rejected";
+
+        // Actualizar la request con el nuevo estado
+        await request.update({ status: newStatus });
+
+        ctx.status = 200;
+        ctx.body = { message: `Request has been ${newStatus}`, request };
+    } catch (error) {
+        console.error("Error validating request:", error);
+        ctx.status = 500;
+        ctx.body = { message: "An error occurred while validating the request." };
+    }
+});
+
 module.exports = router;
