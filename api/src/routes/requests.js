@@ -1,5 +1,5 @@
 const Router = require("koa-router");
-const { Request, Usuario } = require("../models");
+const { Request, Usuario, Fixture } = require("../models");
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
@@ -20,11 +20,32 @@ mqttClient.on("error", (err) => {
 
 // Endpoint para postear una nueva request
 router.post("/", async (ctx) => {
+    const t = await Request.sequelize.transaction();  // Iniciar transacción
     try {
         const { group_id, fixture_id, league_name, round, date, result, deposit_token, quantity, user_id, status } = ctx.request.body;
 
         // Generar un nuevo UUID para la request
         const request_id = uuidv4();
+
+        // Buscar el fixture para reservar los bonos
+        const fixture = await Fixture.findOne({ where: { id: fixture_id }, transaction: t });
+
+        if (!fixture) {
+            ctx.status = 404;
+            ctx.body = { error: "Fixture not found" };
+            return;
+        }
+
+        // Verificar si hay suficientes bonos disponibles
+        if (fixture.bonos_disponibles < quantity) {
+            ctx.status = 400;
+            ctx.body = { error: "Not enough bonos available" };
+            return;
+        }
+
+        // Reservar los bonos reduciendo la cantidad disponible
+        fixture.bonos_disponibles -= quantity;
+        await fixture.save({ transaction: t });
 
         // Crear la nueva request en la base de datos con estado 'sent'
         const newRequest = await Request.create({
@@ -41,7 +62,10 @@ router.post("/", async (ctx) => {
             seller: 0,  // Siempre es 0
             user_id,
             status: "sent"  // Cambiar a 'sent' cuando se crea la request
-        });
+        }, { transaction: t });
+
+        // Commit de la transacción
+        await t.commit();
 
         // Preparar el payload para el mensaje MQTT
         const messagePayload = {
@@ -72,12 +96,14 @@ router.post("/", async (ctx) => {
         });
 
     } catch (error) {
+        await t.rollback();  // Si algo falla, revertimos los cambios
         console.error("Error creating request:", error);
         ctx.status = 500;
         ctx.body = { message: "An error occurred while creating the request." };
     }
 });
 
+// Endpoint para obtener todas las requests
 router.get("/", async (ctx) => {
     const { page = 1, count = 25, user_id, status } = ctx.query;
 
@@ -112,6 +138,8 @@ router.get("/", async (ctx) => {
         count: parseInt(count),
     };
 });
+
+// Endpoint para obtener una request por ID
 router.get("/:id", async (ctx) => {
     const { id } = ctx.params;
 
@@ -131,11 +159,12 @@ router.get("/:id", async (ctx) => {
 
 // Endpoint para manejar la validación de una request
 router.patch("/validate", async (ctx) => {
+    const t = await Request.sequelize.transaction();  // Iniciar transacción
     try {
         const { request_id, group_id, seller, valid } = ctx.request.body;
 
         // Verificar si la request existe
-        const request = await Request.findOne({ where: { request_id } });
+        const request = await Request.findOne({ where: { request_id }, transaction: t });
 
         if (!request) {
             ctx.status = 404;
@@ -143,15 +172,35 @@ router.patch("/validate", async (ctx) => {
             return;
         }
 
+        // Buscar el fixture asociado
+        const fixture = await Fixture.findOne({ where: { id: request.fixture_id }, transaction: t });
+
+        if (!fixture) {
+            ctx.status = 404;
+            ctx.body = { error: "Fixture not found" };
+            return;
+        }
+
         // Actualizar el estado de la request basado en el valor de "valid"
         const newStatus = valid ? "accepted" : "rejected";
 
+        // Si la request es rechazada, restaurar los bonos
+        if (!valid) {
+            fixture.bonos_disponibles += request.quantity;
+            await fixture.save({ transaction: t });
+        }
+
         // Actualizar la request con el nuevo estado
-        await request.update({ status: newStatus });
+        await request.update({ status: newStatus }, { transaction: t });
+
+        // Commit de la transacción
+        await t.commit();
 
         ctx.status = 200;
         ctx.body = { message: `Request has been ${newStatus}`, request };
+
     } catch (error) {
+        await t.rollback();  // Revertir si hay algún error
         console.error("Error validating request:", error);
         ctx.status = 500;
         ctx.body = { message: "An error occurred while validating the request." };
