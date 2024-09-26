@@ -3,6 +3,7 @@ const { Request, Usuario, Fixture } = require("../models");
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
+const fs = require('fs');
 
 // Configuración de conexión MQTT
 const mqttClient = mqtt.connect({
@@ -100,6 +101,60 @@ router.post("/", async (ctx) => {
         ctx.status = 500;
         ctx.body = { message: "An error occurred while creating the request." };
     }
+});
+
+// Endpoint para obtener todas las requests
+router.get("/", async (ctx) => {
+    const { page = 1, count = 25, user_id, status } = ctx.query;
+
+    let where = {};
+
+    // Filtro por user_id si es proporcionado
+    if (user_id) {
+        where.user_id = user_id;
+    }
+
+    // Filtro por status si es proporcionado
+    if (status) {
+        where.status = status;
+    }
+
+    // Limitar el número máximo de resultados a 25
+    const limit = Math.min(parseInt(count), 25);
+
+    // Buscar las requests con los filtros aplicados
+    const requests = await Request.findAndCountAll({
+        where,
+        include: [{ model: Usuario, as: 'usuario' }],  // Incluir datos del usuario si es necesario
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset: (page - 1) * limit,
+    });
+
+    ctx.body = {
+        requests: requests.rows,
+        total: requests.count,
+        page: parseInt(page),
+        count: parseInt(count),
+    };
+});
+
+// Endpoint para obtener una request por ID
+router.get("/:id", async (ctx) => {
+    const { id } = ctx.params;
+
+    const request = await Request.findOne({
+        where: { request_id: id },
+        include: [{ model: Usuario, as: 'usuario' }]
+    });
+
+    if (!request) {
+        ctx.status = 404;
+        ctx.body = { error: "Request not found" };
+        return;
+    }
+
+    ctx.body = request;
 });
 
 // Endpoint para manejar la validación de una request
