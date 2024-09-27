@@ -1,5 +1,5 @@
 const Router = require("koa-router");
-const { Request, Usuario, Fixture } = require("../models");
+const { Request, Usuario, Fixture, ExternalRequest } = require("../models");
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
@@ -18,90 +18,126 @@ mqttClient.on("error", (err) => {
     mqttClient.end();
 });
 
-// Endpoint para postear una nueva request
+// Función auxiliar para reservar bonos
+async function reservarBonos(fixture_id, quantity, transaction) {
+    // Buscar el fixture para reservar los bonos
+    const fixture = await Fixture.findOne({ where: { id: fixture_id }, transaction });
+
+    if (!fixture) {
+        throw new Error("Fixture not found");
+    }
+
+    // Verificar si hay suficientes bonos disponibles
+    if (fixture.bonos_disponibles < quantity) {
+        throw new Error("Not enough bonos available");
+    }
+
+    // Reservar los bonos reduciendo la cantidad disponible
+    fixture.bonos_disponibles -= quantity;
+    await fixture.save({ transaction });
+}
+
 router.post("/", async (ctx) => {
     const t = await Request.sequelize.transaction();  // Iniciar transacción
     try {
-        const { group_id, fixture_id, league_name, round, date, result, deposit_token, quantity, user_id, status } = ctx.request.body;
+        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status } = ctx.request.body;
 
         // Generar un nuevo UUID para la request
         const request_id = uuidv4();
 
-        // Buscar el fixture para reservar los bonos
-        const fixture = await Fixture.findOne({ where: { id: fixture_id }, transaction: t });
+        // Si el group_id es 15, manejar como request interna
+        if (group_id == '15') {
+            // Reservar los bonos reduciendo la cantidad disponible
+            await reservarBonos(fixture_id, quantity, t);
 
-        if (!fixture) {
-            ctx.status = 404;
-            ctx.body = { error: "Fixture not found" };
-            return;
+            // Crear la nueva request en la base de datos con estado 'sent'
+            const newRequest = await Request.create({
+                request_id,
+                group_id,
+                fixture_id,
+                league_name,
+                round,
+                date,
+                result,
+                deposit_token: deposit_token || "",  // Por defecto vacío si no se pasa
+                datetime,
+                quantity,
+                seller: 0,  // Siempre es 0
+                user_id,
+                status: "sent"  // Cambiar a 'sent' cuando se crea la request
+            }, { transaction: t });
+
+            // Commit de la transacción
+            await t.commit();
+
+            // Preparar el payload para el mensaje MQTT
+            const messagePayload = {
+                request_id,
+                group_id,
+                fixture_id,
+                league_name,
+                round,
+                date,
+                result,
+                deposit_token: "",  // Siempre vacío
+                datetime,
+                quantity,
+                seller: 0
+            };
+
+            // Publicar el mensaje en el canal fixtures/requests
+            mqttClient.publish('fixtures/requests', JSON.stringify(messagePayload), { qos: 0 }, (error) => {
+                if (error) {
+                    console.error('Error al publicar en el broker:', error);
+                    ctx.status = 500;
+                    ctx.body = { message: "Failed to publish message to broker." };
+                } else {
+                    console.log('Mensaje publicado en el canal fixtures/requests:', messagePayload);
+                    ctx.status = 201;
+                    ctx.body = { message: "Request successfully created and message sent to broker!", request: newRequest };
+                }
+            });
+
+        } else {
+            // Si el group_id no es 15, guardar como ExternalRequest
+            const externalRequest = await ExternalRequest.create({
+                request_id,
+                group_id,
+                fixture_id,
+                league_name,
+                round,
+                date,
+                result,
+                deposit_token: deposit_token || "",  // Por defecto vacío si no se pasa
+                datetime,
+                quantity,
+                seller: 0,  // Siempre es 0
+                status: "pending"  // Cambiar a 'pending' cuando se crea la external request
+            }, { transaction: t });
+
+            // Reservar los bonos reduciendo la cantidad disponible para las external requests también
+            await reservarBonos(fixture_id, quantity, t);
+
+            // Commit de la transacción
+            await t.commit();
+
+            ctx.status = 201;
+            ctx.body = { message: "External request successfully created!", externalRequest };
         }
-
-        // Verificar si hay suficientes bonos disponibles
-        if (fixture.bonos_disponibles < quantity) {
-            ctx.status = 400;
-            ctx.body = { error: "Not enough bonos available" };
-            return;
-        }
-
-        // Reservar los bonos reduciendo la cantidad disponible
-        fixture.bonos_disponibles -= quantity;
-        await fixture.save({ transaction: t });
-
-        // Crear la nueva request en la base de datos con estado 'sent'
-        const newRequest = await Request.create({
-            request_id,
-            group_id,
-            fixture_id,
-            league_name,
-            round,
-            date,
-            result,
-            deposit_token: deposit_token || "",  // Por defecto vacío si no se pasa
-            datetime: new Date().toISOString(),  // Fecha y hora actual
-            quantity,
-            seller: 0,  // Siempre es 0
-            user_id,
-            status: "sent"  // Cambiar a 'sent' cuando se crea la request
-        }, { transaction: t });
-
-        // Commit de la transacción
-        await t.commit();
-
-        // Preparar el payload para el mensaje MQTT
-        const messagePayload = {
-            request_id,
-            group_id,
-            fixture_id,
-            league_name,
-            round,
-            date,
-            result,
-            deposit_token: "",  // Siempre vacío
-            datetime: new Date().toISOString(),
-            quantity,
-            seller: 0
-        };
-
-        // Publicar el mensaje en el canal fixtures/requests
-        mqttClient.publish('fixtures/requests', JSON.stringify(messagePayload), { qos: 0 }, (error) => {
-            if (error) {
-                console.error('Error al publicar en el broker:', error);
-                ctx.status = 500;
-                ctx.body = { message: "Failed to publish message to broker." };
-            } else {
-                console.log('Mensaje publicado en el canal fixtures/requests:', messagePayload);
-                ctx.status = 201;
-                ctx.body = { message: "Request successfully created and message sent to broker!", request: newRequest };
-            }
-        });
 
     } catch (error) {
-        await t.rollback();  // Si algo falla, revertimos los cambios
+        await t.rollback();
         console.error("Error creating request:", error);
-        ctx.status = 500;
-        ctx.body = { message: "An error occurred while creating the request." };
+        if (error.message == "Fixture not found" || error.message == "Not enough bonos available") {
+            ctx.status = 404;
+            ctx.body = { error: error.message };
+        } else {
+            ctx.status = 500;
+            ctx.body = { message: "An error occurred while creating the request." };
+        }
     }
 });
+
 
 // Endpoint para obtener todas las requests
 router.get("/", async (ctx) => {
@@ -163,12 +199,25 @@ router.patch("/validate", async (ctx) => {
     try {
         const { request_id, group_id, seller, valid } = ctx.request.body;
 
-        // Verificar si la request existe
-        const request = await Request.findOne({ where: { request_id }, transaction: t });
+        let requestModel;
+
+        // Determinar si es una request interna o externa
+        console.log("Id de grupo", group_id)
+        if (group_id == "15") {
+            // Si el group_id es 15, usamos el modelo Request
+            console.log("Entre al if")
+            requestModel = Request;
+        } else {
+            // Si el group_id no es 15, usamos el modelo ExternalRequest
+            requestModel = ExternalRequest;
+        }
+
+        // Verificar si la request existe en el modelo correspondiente
+        const request = await requestModel.findOne({ where: { request_id }, transaction: t });
 
         if (!request) {
             ctx.status = 404;
-            ctx.body = { error: "Request not found" };
+            ctx.body = { error: `${group_id == '15' ? 'Request' : 'External Request'} not found` };
             return;
         }
 
@@ -190,14 +239,14 @@ router.patch("/validate", async (ctx) => {
             await fixture.save({ transaction: t });
         }
 
-        // Actualizar la request con el nuevo estado
+        // Actualizar la request con el nuevo estado en el modelo correspondiente
         await request.update({ status: newStatus }, { transaction: t });
 
         // Commit de la transacción
         await t.commit();
 
         ctx.status = 200;
-        ctx.body = { message: `Request has been ${newStatus}`, request };
+        ctx.body = { message: `${group_id == '15' ? 'Request' : 'External Request'} has been ${newStatus}`, request };
 
     } catch (error) {
         await t.rollback();  // Revertir si hay algún error
@@ -206,5 +255,6 @@ router.patch("/validate", async (ctx) => {
         ctx.body = { message: "An error occurred while validating the request." };
     }
 });
+
 
 module.exports = router;

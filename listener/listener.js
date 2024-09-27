@@ -78,7 +78,22 @@ function connectToBroker() {
         } else if (topic === "fixtures/requests") {
             console.log("Procesando mensaje de Requestss");
 
-        } else {
+        } else if (topic === "fixtures/history") {
+            console.log("Procesando mensaje de fixtures/history...");
+            apiEndpoint = 'http://localhost:3000/requests';
+            axios.post(apiEndpoint, parsedMessage, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log(`Message sent to API for topic ${topic}:`, response.data);
+            })
+            .catch(error => {
+                console.error(`Error sending message to API for topic ${topic}:`, error);
+            });
+
+        }else {
             console.log("Tópico no reconocido:", topic);
             return;  // Salir si el tópico no es reconocido
         }
@@ -105,4 +120,5 @@ connectToBroker();
 subscribeToTopic("fixtures/info");
 subscribeToTopic("fixtures/validation");
 subscribeToTopic("fixtures/requests");
+subscribeToTopic("fixtures/history");
 
