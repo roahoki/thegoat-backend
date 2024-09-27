@@ -40,13 +40,16 @@ async function reservarBonos(fixture_id, quantity, transaction) {
 router.post("/", async (ctx) => {
     const t = await Request.sequelize.transaction();  // Iniciar transacción
     try {
-        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status } = ctx.request.body;
+        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id } = ctx.request.body;
 
-        // Generar un nuevo UUID para la request
-        const request_id = uuidv4();
+        let request_id;
 
-        // Si el group_id es 15, manejar como request interna
-        if (group_id == '15') {
+        if (group_id == '15' && user_id && typeof request_id === 'undefined') {
+            console.log("HOLA ME LLEGO DEL GRUPO 15");
+
+            // Generar un nuevo UUID para la request interna
+            request_id = uuidv4();
+
             // Reservar los bonos reduciendo la cantidad disponible
             await reservarBonos(fixture_id, quantity, t);
 
@@ -98,8 +101,10 @@ router.post("/", async (ctx) => {
                 }
             });
 
-        } else {
-            // Si el group_id no es 15, guardar como ExternalRequest
+        } else if (group_id !== '15') {
+            // Si el group_id no es 15, manejar como ExternalRequest
+            request_id = incoming_request_id;
+
             const externalRequest = await ExternalRequest.create({
                 request_id,
                 group_id,
@@ -123,12 +128,17 @@ router.post("/", async (ctx) => {
 
             ctx.status = 201;
             ctx.body = { message: "External request successfully created!", externalRequest };
+
+        } else {
+            // Si el group_id es 15, pero la request ya existe o no tiene user_id
+            ctx.status = 400;
+            ctx.body = { message: "Invalid request. Either user_id is missing, or the request already exists." };
         }
 
     } catch (error) {
         await t.rollback();
         console.error("Error creating request:", error);
-        if (error.message == "Fixture not found" || error.message == "Not enough bonos available") {
+        if (error.message === "Fixture not found" || error.message === "Not enough bonos available") {
             ctx.status = 404;
             ctx.body = { error: error.message };
         } else {
@@ -137,6 +147,7 @@ router.post("/", async (ctx) => {
         }
     }
 });
+
 
 
 // Endpoint para obtener todas las requests
