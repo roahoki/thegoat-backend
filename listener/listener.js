@@ -76,10 +76,7 @@ function connectToBroker() {
             });
 
         } else if (topic === "fixtures/requests") {
-            console.log("Procesando mensaje de Requestss");
-
-        } else if (topic === "fixtures/history") {
-            console.log("Procesando mensaje de fixtures/history...");
+            console.log("Procesando mensaje de fixtures/requests...");
             apiEndpoint = 'http://localhost:3000/requests';
             axios.post(apiEndpoint, parsedMessage, {
                 headers: {
@@ -92,6 +89,10 @@ function connectToBroker() {
             .catch(error => {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
             });
+
+        //ESTO ESTA MALO ARREGLARLO CUANDO SEPAMOS QUE HACER
+        } else if (topic === "fixtures/history") {
+            console.log("Procesando mensaje de fixtures/history...");
 
         }else {
             console.log("Tópico no reconocido:", topic);
