@@ -1,6 +1,7 @@
+// app.js
 const Koa = require('koa');
-const { koaBody } = require('koa-body');
 const KoaLogger = require('koa-logger');
+const bodyParser = require('koa-bodyparser');
 const router = require('./routes.js');
 const orm = require('./models');
 
@@ -9,13 +10,15 @@ const app = new Koa();
 app.context.orm = orm;
 
 app.use(KoaLogger());
-app.use(koaBody());
+
+// Use bodyParser middleware
+app.use(bodyParser());
 
 app.use(router.routes());
 
+// Handle unmatched routes
 app.use(async (ctx) => {
-	ctx.body = "Endopoint no habilitado";
-}
-);
+  ctx.body = "Endpoint no habilitado";
+});
 
 module.exports = app;
