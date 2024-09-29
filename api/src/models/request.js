@@ -6,7 +6,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // Definir la asociación con el modelo Usuario
       Request.belongsTo(models.Usuario, {
-        foreignKey: 'user_id',
+        foreignKey: 'usuarioId',
         as: 'usuario'  // El alias que quieras usar para la relación
       });
     }
@@ -66,8 +66,10 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       references: {
         model: 'Usuarios',  // Nombre de la tabla Usuarios
-        key: 'id'
-      }
+        key: 'id', 
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
     },
     status: {
       type: DataTypes.STRING,
