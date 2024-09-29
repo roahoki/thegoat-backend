@@ -1,11 +1,17 @@
-// routes/auth.js
-const express = require('express');
-const router = express.Router();
+const Router = require('koa-router');
+const router = new Router();
 const { Usuario } = require('../models');
 
 // Endpoint to handle login or registration
-router.post('/login', async (req, res) => {
-  const { email, name, auth0Token } = req.body;
+router.post('/login', async (ctx) => {
+  const { email, name, auth0Token } = ctx.request.body;
+
+  // Validate input
+  if (!email || !name || !auth0Token) {
+    ctx.status = 400;
+    ctx.body = { error: 'Missing required fields.' };
+    return;
+  }
 
   try {
     // Find or create the user
@@ -20,9 +26,12 @@ router.post('/login', async (req, res) => {
       await user.save();
     }
 
-    res.status(200).json({ user });
+    ctx.status = 200;
+    ctx.body = { user };
   } catch (error) {
-    res.status(500).json({ error: 'An error occurred.' });
+    console.error(error);
+    ctx.status = 500;
+    ctx.body = { error: 'An error occurred while logging in.' };
   }
 });
 

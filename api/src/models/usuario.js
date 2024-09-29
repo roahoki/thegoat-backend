@@ -5,10 +5,9 @@ module.exports = (sequelize, DataTypes) => {
   class Usuario extends Model {
     static associate(models) {
       Usuario.hasMany(models.Request, {
-        foreignKey: 'request_id',
-        as: 'request'
+        foreignKey: 'usuarioId', // Corrected foreign key
+        as: 'requests'            // Pluralized 'request' to 'requests'
       });
-
     }
   }
 
@@ -18,10 +17,12 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         primaryKey: true,
+        autoIncrement: true, // Added autoIncrement
       },
       billetera: {
         type: DataTypes.INTEGER,
         allowNull: false,
+        defaultValue: 0, // Added default value
       },
       auth0Token: {
         type: DataTypes.STRING,
