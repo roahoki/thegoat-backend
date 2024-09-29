@@ -33,27 +33,74 @@ function connectToBroker() {
         mqttClient.end();
     });
 
-    // Received Message
+    // Recibir mensajes
     mqttClient.on("message", (topic, message, packet) => {
         console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
 
+        // Guardar el mensaje en un archivo
         fs.writeFileSync('output.txt', message.toString(), 'utf8');
 
         // Parsear el mensaje a objeto JSON
         const parsedMessage = JSON.parse(message.toString());
 
-        // Enviar el mensaje como JSON a la API
-        axios.post('http://api:3000/fixtures/update', parsedMessage, {
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
+        // Lógica común para procesar los mensajes
+        let apiEndpoint = '';
+
+        if (topic === "fixtures/info") {
+            console.log("Procesando mensaje de fixtures/info...");
+            apiEndpoint = 'http://localhost:3000/fixtures/update';
+            axios.post(apiEndpoint, parsedMessage, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
             .then(response => {
-                console.log('Message sent to API:', response.data);
+                console.log(`Message sent to API for topic ${topic}:`, response.data);
             })
             .catch(error => {
-                console.error('Error sending message to API:', error);
+                console.error(`Error sending message to API for topic ${topic}:`, error);
             });
+        } else if (topic === "fixtures/validation") {
+            console.log("Procesando mensaje de fixtures/validation...");
+            apiEndpoint = 'http://localhost:3000/requests/validate';
+            axios.patch(apiEndpoint, parsedMessage, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log(`Message sent to API for topic ${topic}:`, response.data);
+            })
+            .catch(error => {
+                console.error(`Error sending message to API for topic ${topic}:`, error);
+            });
+
+        } else if (topic === "fixtures/requests") {
+            console.log("Procesando mensaje de fixtures/requests...");
+            apiEndpoint = 'http://localhost:3000/requests';
+            axios.post(apiEndpoint, parsedMessage, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log(`Message sent to API for topic ${topic}:`, response.data);
+            })
+            .catch(error => {
+                console.error(`Error sending message to API for topic ${topic}:`, error);
+            });
+
+        //ESTO ESTA MALO ARREGLARLO CUANDO SEPAMOS QUE HACER
+        } else if (topic === "fixtures/history") {
+            console.log("Procesando mensaje de fixtures/history...");
+
+        }else {
+            console.log("Tópico no reconocido:", topic);
+            return;  // Salir si el tópico no es reconocido
+        }
+
+        // Enviar el mensaje a la API correspondiente
+    
     });
 
 }
@@ -72,3 +119,7 @@ function subscribeToTopic(topic) {
 
 connectToBroker();
 subscribeToTopic("fixtures/info");
+subscribeToTopic("fixtures/validation");
+subscribeToTopic("fixtures/requests");
+subscribeToTopic("fixtures/history");
+

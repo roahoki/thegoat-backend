@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build: ./api
@@ -12,7 +10,11 @@ services:
     networks:
       - app-network
     restart: always
-
+    env_file:
+      - ./.env
+    volumes:
+      - ./api:/app
+      - /app/node_modules
   listener:
     build: ./listener
     depends_on:
