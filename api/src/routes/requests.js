@@ -213,10 +213,10 @@ router.patch("/validate", async (ctx) => {
         let requestModel;
 
         // Determinar si es una request interna o externa
-        console.log("Id de grupo", group_id)
+        console.log("Id de grupo", group_id);
         if (group_id == "15") {
             // Si el group_id es 15, usamos el modelo Request
-            console.log("Entre al if")
+            console.log("Entre al if");
             requestModel = Request;
         } else {
             // Si el group_id no es 15, usamos el modelo ExternalRequest
@@ -250,6 +250,30 @@ router.patch("/validate", async (ctx) => {
             await fixture.save({ transaction: t });
         }
 
+        // Si es del grupo 15 y es aceptada, restar 1000 * quantity de la billetera del usuario
+        if (group_id == "15" && valid) {
+            const usuario = await Usuario.findOne({ where: { id: request.user_id }, transaction: t });
+
+            if (!usuario) {
+                ctx.status = 404;
+                ctx.body = { error: "Usuario not found" };
+                return;
+            }
+
+            // Restar 1000 * quantity de la billetera del usuario
+            usuario.billetera -= 1000 * request.quantity;
+
+            // Verificar si la billetera es suficiente
+            if (usuario.billetera < 0) {
+                ctx.status = 400;
+                ctx.body = { error: "Insufficient funds in the user's billetera." };
+                return;
+            }
+
+            // Guardar los cambios en el usuario
+            await usuario.save({ transaction: t });
+        }
+
         // Actualizar la request con el nuevo estado en el modelo correspondiente
         await request.update({ status: newStatus }, { transaction: t });
 
@@ -266,6 +290,5 @@ router.patch("/validate", async (ctx) => {
         ctx.body = { message: "An error occurred while validating the request." };
     }
 });
-
 
 module.exports = router;
