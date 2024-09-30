@@ -48,7 +48,7 @@ function connectToBroker() {
 
         if (topic === "fixtures/info") {
             console.log("Procesando mensaje de fixtures/info...");
-            apiEndpoint = 'http://localhost:3000/fixtures/update';
+            apiEndpoint = 'http://api:3000/fixtures/update';
             axios.post(apiEndpoint, parsedMessage, {
                 headers: {
                     'Content-Type': 'application/json'
@@ -62,7 +62,7 @@ function connectToBroker() {
             });
         } else if (topic === "fixtures/validation") {
             console.log("Procesando mensaje de fixtures/validation...");
-            apiEndpoint = 'http://localhost:3000/requests/validate';
+            apiEndpoint = 'http://api:3000/requests/validate';
             axios.patch(apiEndpoint, parsedMessage, {
                 headers: {
                     'Content-Type': 'application/json'
@@ -77,7 +77,7 @@ function connectToBroker() {
 
         } else if (topic === "fixtures/requests") {
             console.log("Procesando mensaje de fixtures/requests...");
-            apiEndpoint = 'http://localhost:3000/requests';
+            apiEndpoint = 'http://api:3000/requests';
             axios.post(apiEndpoint, parsedMessage, {
                 headers: {
                     'Content-Type': 'application/json'
