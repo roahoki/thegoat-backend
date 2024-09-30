@@ -45,7 +45,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     datetime: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true
     },
     quantity: {
       type: DataTypes.INTEGER,
