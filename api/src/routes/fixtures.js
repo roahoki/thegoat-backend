@@ -163,6 +163,15 @@ router.get("/data", async (ctx) => {
             {
                 model: League,
                 as: "league",
+
+            },
+            { 
+                model: Goal, 
+                as: 'goals', 
+            }, 
+            { 
+                model: Odd, 
+                as: 'odds', 
             },
         ],
         order: [['updatedAt', 'DESC']],
