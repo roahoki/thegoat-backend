@@ -163,6 +163,15 @@ router.get("/data", async (ctx) => {
             {
                 model: League,
                 as: "league",
+
+            },
+            { 
+                model: Goal, 
+                as: 'goals', 
+            }, 
+            { 
+                model: Odd, 
+                as: 'odds', 
             },
         ],
         order: [['updatedAt', 'DESC']],
@@ -203,6 +212,91 @@ router.get("/data/:id", async (ctx) => {
     ctx.body = fixture;
 });
 
+// Endpoint para manejar el mensaje del canal history
+router.post("/history", async (ctx) => {
+    const { fixtures } = ctx.request.body;
+
+    // Iterar sobre cada fixture recibido en el mensaje
+    for (const fixtureData of fixtures) {
+        const fixture = fixtureData.fixture;
+        const goals = fixtureData.goals;
+
+        // Obtener el ID del fixture
+        const fixtureId = fixture.id;
+
+        // Buscar el fixture en la base de datos
+        const dbFixture = await Fixture.findOne({
+            where: { id: fixtureId },
+            include: [
+                { model: Team, as: 'homeTeam' },  // Incluir el equipo local
+                { model: Team, as: 'awayTeam' }   // Incluir el equipo visitante
+            ]
+        });
+
+        if (!dbFixture) {
+            console.error("Fixture not found:", fixtureId);
+            continue; // Salta al siguiente fixture si no se encuentra
+        }
+
+        // Determinar el nombre del equipo ganador basado en los goles
+        let winningTeam = null;
+        if (goals.home > goals.away) {
+            winningTeam = dbFixture.homeTeam.name; // El equipo local ganó
+        } else if (goals.away > goals.home) {
+            winningTeam = dbFixture.awayTeam.name; // El equipo visitante ganó
+        } else {
+            winningTeam = "---"; // Empate
+        }
+
+        // Verificar si hay requests del grupo 15 para este fixture
+        const requests = await Request.findAll({
+            where: {
+                fixture_id: fixtureId,
+                group_id: "15"
+            }
+        });
+
+        for (const request of requests) {
+            const expectedResult = request.result; // El resultado que apostaron (nombre del equipo)
+
+            // Verifica si el resultado esperado coincide con el resultado real
+            const hasWon = (expectedResult === winningTeam || (expectedResult === "---" && winningTeam === "---"));
+
+            // Cambiar el estado de la request
+            const newStatus = hasWon ? "won" : "lost";
+            await request.update({ status: newStatus });
+
+            // Si ganó la apuesta, actualizar la billetera del usuario
+            if (hasWon) {
+                const usuario = await Usuario.findOne({ where: { id: request.user_id } });
+                if (usuario) {
+                    // Obtener los odds desde la fixture
+                    const oddsArray = dbFixture.odds.find(odd => odd.name === "Match Winner");
+                    const odds = oddsArray ? oddsArray.values : [];
+
+                    // Determinar el odd correspondiente al resultado
+                    let winningOdd = null;
+                    if (winningTeam === dbFixture.homeTeam.name) {
+                        winningOdd = odds.find(odd => odd.value === "Home");
+                    } else if (winningTeam === dbFixture.awayTeam.name) {
+                        winningOdd = odds.find(odd => odd.value === "Away");
+                    } else if (winningTeam === "---") {
+                        winningOdd = odds.find(odd => odd.value === "Draw");
+                    }
+
+                    if (winningOdd) {
+                        const winnings = 100 * request.quantity * parseFloat(winningOdd.odd); // Calcular las ganancias
+                        usuario.billetera += winnings; // Agregar ganancias a la billetera
+                        await usuario.save(); // Guardar los cambios en la billetera
+                    }
+                }
+            }
+        }
+    }
+
+    ctx.status = 200;
+    ctx.body = { message: "History processed successfully." };
+});
 
 
 
