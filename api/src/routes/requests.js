@@ -1,5 +1,5 @@
 const Router = require("koa-router");
-const { Request, Usuario, Fixture, ExternalRequest } = require("../models");
+const { Request, Usuario, Fixture, ExternalRequest, Team } = require("../models");
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
