@@ -66,14 +66,12 @@ router.post("/update", async (ctx) => {
                 }
             });
 
-            // Insertar nuevos Goals
-            for (const goalData of fixtureData.goals) {
-                await Goal.create({
-                    fixture_id: fixtureData.fixture.id,
-                    home: goalData.home,
-                    away: goalData.away,
-                });
-            }
+            // Insertar nuevo Goals
+            await Goal.create({
+                fixture_id: fixtureData.fixture.id,
+                home: goalData.home,
+                away: goalData.away,
+            });
 
             // Manejar Odds
             // Eliminar Odds antiguos para esta fixture (opcional)
