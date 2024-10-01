@@ -69,8 +69,8 @@ router.post("/update", async (ctx) => {
             // Insertar nuevo Goals
             await Goal.create({
                 fixture_id: fixtureData.fixture.id,
-                home: goalData.home,
-                away: goalData.away,
+                home: fixtureData.goals.home,
+                away: fixtureData.goals.away,
             });
 
             // Manejar Odds
