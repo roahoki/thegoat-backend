@@ -15,6 +15,7 @@ services:
     volumes:
       - ./api:/app
       - /app/node_modules
+    command: yarn start
   listener:
     build: ./listener
     depends_on:
@@ -22,7 +23,16 @@ services:
     networks:
       - app-network
     restart: always
-
+  linter:
+    build: ./api
+    command: yarn lint
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - app-network
   db:
     image: postgres:15
     environment:
