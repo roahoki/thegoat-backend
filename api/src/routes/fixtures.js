@@ -59,17 +59,34 @@ router.post("/update", async (ctx) => {
                 status_elapsed: fixtureData.fixture.status.elapsed,
             });
 
-            // Upsert Goals
-            await Goal.upsert({
-                fixture_id: fixtureData.fixture.id,
-                home: fixtureData.goals.home,
-                away: fixtureData.goals.away,
+            // Eliminar Goals antiguos para esta fixture
+            await Goal.destroy({
+                where: {
+                    fixture_id: fixtureData.fixture.id
+                }
             });
 
+            // Insertar nuevos Goals
+            for (const goalData of fixtureData.goals) {
+                await Goal.create({
+                    fixture_id: fixtureData.fixture.id,
+                    home: goalData.home,
+                    away: goalData.away,
+                });
+            }
+
             // Manejar Odds
+            // Eliminar Odds antiguos para esta fixture (opcional)
+            await Odd.destroy({
+                where: {
+                    fixture_id: fixtureData.fixture.id
+                }
+            });
+
+            // Insertar nuevos Odds
             for (const oddData of fixtureData.odds) {
                 for (const valueData of oddData.values) {
-                    await Odd.upsert({
+                    await Odd.create({
                         fixture_id: fixtureData.fixture.id,
                         name: oddData.name,
                         value: valueData.value,
