@@ -60,20 +60,33 @@ function connectToBroker() {
             .catch(error => {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
             });
+            
         } else if (topic === "fixtures/validation") {
             console.log("Procesando mensaje de fixtures/validation...");
-            apiEndpoint = 'http://api:3000/requests/validate';
-            axios.patch(apiEndpoint, parsedMessage, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                console.log(`Message sent to API for topic ${topic}:`, response.data);
-            })
-            .catch(error => {
-                console.error(`Error sending message to API for topic ${topic}:`, error);
-            });
+            const apiEndpoint = 'http://api:3000/requests/validate';
+            let attempts = 0;
+            const maxRetries = 3;
+        
+            const sendValidation = () => {
+                axios.patch(apiEndpoint, parsedMessage, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log(`Message sent to API for topic ${topic}:`, response.data);
+                })
+                .catch(error => {
+                    console.error(`Error sending message to API for topic ${topic}:`, error);
+                    attempts++;
+                    if (attempts < maxRetries) {
+                        console.log(`Retrying... Attempts left: ${maxRetries - attempts}`);
+                        setTimeout(sendValidation, 1000);
+                    }
+                });
+            };
+        
+            sendValidation();
 
         } else if (topic === "fixtures/requests") {
             console.log("Procesando mensaje de fixtures/requests...");
