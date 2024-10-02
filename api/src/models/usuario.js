@@ -5,7 +5,7 @@ module.exports = (sequelize, DataTypes) => {
   class Usuario extends Model {
     static associate(models) {
       Usuario.hasMany(models.Request, {
-        foreignKey: 'usuarioId', // Corrected foreign key
+        foreignKey: 'usuarioId', // Foreign key
         as: 'requests'            // Pluralized 'request' to 'requests'
       });
     }
@@ -40,6 +40,14 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      ip_address: {
+        type: DataTypes.STRING,
+        allowNull: true, // Nueva columna para almacenar la IP
+      },
+      location: {
+        type: DataTypes.STRING,
+        allowNull: true, // Nueva columna para almacenar la ubicación
+      }
     },
     {
       sequelize,
@@ -50,3 +58,4 @@ module.exports = (sequelize, DataTypes) => {
 
   return Usuario;
 };
+
