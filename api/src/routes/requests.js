@@ -176,40 +176,53 @@ router.get("/", async (ctx) => {
     // Limitar el número máximo de resultados a 25
     const limit = Math.min(parseInt(count), 25);
 
-    // Buscar las requests con los filtros aplicados
-    const requests = await Request.findAndCountAll({
-        where,
-        include: [{ model: Usuario, as: 'usuario' }],  // Incluir datos del usuario si es necesario
-        order: [['createdAt', 'DESC']],
-        limit,
-        offset: (page - 1) * limit,
-    });
+    try {
+        // Buscar las requests con los filtros aplicados
+        const requests = await Request.findAndCountAll({
+            where,
+            include: [{ model: Usuario, as: 'usuario' }],  // Incluir datos del usuario si es necesario
+            order: [['createdAt', 'DESC']],
+            limit,
+            offset: (page - 1) * limit,
+        });
 
-    ctx.body = {
-        requests: requests.rows,
-        total: requests.count,
-        page: parseInt(page),
-        count: parseInt(count),
-    };
+        ctx.body = {
+            requests: requests.rows,
+            total: requests.count,
+            page: parseInt(page),
+            count: parseInt(count),
+        };
+    } catch (error) {
+        console.error("Error fetching requests:", error);
+        ctx.status = 500;
+        ctx.body = { error: "An error occurred while fetching requests." };
+    }
 });
 
 // Endpoint para obtener una request por ID
 router.get("/:id", async (ctx) => {
     const { id } = ctx.params;
 
-    const request = await Request.findOne({
-        where: { request_id: id },
-        include: [{ model: Usuario, as: 'usuario' }]
-    });
+    try {
+        const request = await Request.findOne({
+            where: { request_id: id },
+            include: [{ model: Usuario, as: 'usuario' }]
+        });
 
-    if (!request) {
-        ctx.status = 404;
-        ctx.body = { error: "Request not found" };
-        return;
+        if (!request) {
+            ctx.status = 404;
+            ctx.body = { error: "Request not found" };
+            return;
+        }
+
+        ctx.body = request;
+    } catch (error) {
+        console.error("Error fetching request by ID:", error);
+        ctx.status = 500;
+        ctx.body = { error: "An error occurred while fetching the request." };
     }
-
-    ctx.body = request;
 });
+
 
 // Endpoint para manejar la validación de una request
 router.patch("/validate", async (ctx) => {
