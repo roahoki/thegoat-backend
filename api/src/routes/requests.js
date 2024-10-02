@@ -224,91 +224,79 @@ router.get("/:id", async (ctx) => {
     }
 });
 
-
-// Endpoint para manejar la validación de una request
+// Endpoint para manejar la validación de las requests
 router.patch("/validate", async (ctx) => {
-    const t = await Request.sequelize.transaction();  // Iniciar transacción
+    let t;
     try {
         const { request_id, group_id, seller, valid } = ctx.request.body;
 
-        let requestModel;
+        // Start transaction
+        t = await Request.sequelize.transaction();
 
-        // Determinar si es una request interna o externa
-        console.log("Id de grupo", group_id);
-        if (group_id == "15") {
-            // Si el group_id es 15, usamos el modelo Request
-            console.log("Entre al if");
-            requestModel = Request;
-        } else {
-            // Si el group_id no es 15, usamos el modelo ExternalRequest
-            requestModel = ExternalRequest;
-        }
+        // Determine which model to use
+        const requestModel = group_id == "15" ? Request : ExternalRequest;
 
-        // Verificar si la request existe en el modelo correspondiente
+        // Find the request
         const request = await requestModel.findOne({ where: { request_id }, transaction: t });
-
         if (!request) {
             ctx.status = 404;
             ctx.body = { error: `${group_id == '15' ? 'Request' : 'External Request'} not found` };
             return;
         }
 
-        // Buscar el fixture asociado
+        // Find the associated fixture
         const fixture = await Fixture.findOne({ where: { id: request.fixture_id }, transaction: t });
-
         if (!fixture) {
             ctx.status = 404;
             ctx.body = { error: "Fixture not found" };
             return;
         }
 
-        // Actualizar el estado de la request basado en el valor de "valid"
         const newStatus = valid ? "accepted" : "rejected";
 
-        // Si la request es rechazada, restaurar los bonos
+        // Handle rejected requests
         if (!valid) {
             fixture.bonos_disponibles += request.quantity;
             await fixture.save({ transaction: t });
         }
 
-        // Si es del grupo 15 y es aceptada, restar 1000 * quantity de la billetera del usuario
+        // Handle accepted requests for group 15
         if (group_id == "15" && valid) {
             const usuario = await Usuario.findOne({ where: { id: request.user_id }, transaction: t });
-
             if (!usuario) {
                 ctx.status = 404;
                 ctx.body = { error: "Usuario not found" };
                 return;
             }
 
-            // Restar 1000 * quantity de la billetera del usuario
             usuario.billetera -= 1000 * request.quantity;
-
-            // Verificar si la billetera es suficiente
             if (usuario.billetera < 0) {
                 ctx.status = 400;
                 ctx.body = { error: "Insufficient funds in the user's billetera." };
                 return;
             }
 
-            // Guardar los cambios en el usuario
             await usuario.save({ transaction: t });
         }
 
-        // Actualizar la request con el nuevo estado en el modelo correspondiente
+        // Update request status
         await request.update({ status: newStatus }, { transaction: t });
 
-        // Commit de la transacción
+        // Commit transaction
         await t.commit();
 
         ctx.status = 200;
         ctx.body = { message: `${group_id == '15' ? 'Request' : 'External Request'} has been ${newStatus}`, request };
 
     } catch (error) {
-        await t.rollback();  // Revertir si hay algún error
         console.error("Error validating request:", error);
         ctx.status = 500;
         ctx.body = { message: "An error occurred while validating the request." };
+    } finally {
+        // Ensure transaction is rolled back if it wasn't committed
+        if (t && !t.finished) {
+            await t.rollback();
+        }
     }
 });
 
