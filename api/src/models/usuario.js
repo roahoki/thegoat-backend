@@ -39,14 +39,6 @@ module.exports = (sequelize, DataTypes) => {
       name: {
         type: DataTypes.STRING,
         allowNull: false,
-      },
-      ip_address: {
-        type: DataTypes.STRING,
-        allowNull: true, // Nueva columna para almacenar la IP
-      },
-      location: {
-        type: DataTypes.STRING,
-        allowNull: true, // Nueva columna para almacenar la ubicación
       }
     },
     {
