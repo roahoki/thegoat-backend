@@ -3,6 +3,7 @@ const { Request, Usuario, Fixture, ExternalRequest, Team } = require("../models"
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
+const axios = require('axios');
 const fs = require('fs');
 
 // Configuración de conexión MQTT
