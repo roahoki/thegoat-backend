@@ -4,12 +4,19 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
       await queryInterface.addColumn('Requests', 'location', {
-          type: Sequelize.STRING,  // Ajusta el tipo de dato según tus necesidades
-          allowNull: true,         // Cambia a false si quieres que sea obligatorio
+          type: Sequelize.STRING,
+          allowNull: true,
+      });
+      await queryInterface.addColumn('Requests', 'ip_address', {
+          type: Sequelize.STRING,
+          allowNull: true,
       });
   },
   down: async (queryInterface, Sequelize) => {
       await queryInterface.removeColumn('Requests', 'location');
+
+      await queryInterface.removeColumn('Requests', 'ip_address');
   }
 };
+
 
