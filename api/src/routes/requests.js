@@ -39,8 +39,13 @@ async function reservarBonos(fixture_id, quantity, transaction) {
 
 router.post("/", async (ctx) => {
     const t = await Request.sequelize.transaction();  // Iniciar transacción
+
     try {
         const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id } = ctx.request.body;
+
+        const clientIP = ctx.request.ip;
+        const ipResponse = await axios.get(`http://ip-api.com/json/${clientIP}`);
+        const { city, region, country } = ipResponse.data;
 
         let request_id;
 
@@ -67,7 +72,9 @@ router.post("/", async (ctx) => {
                 quantity,
                 seller: 0,  // Siempre es 0
                 user_id,
-                status: "sent"  // Cambiar a 'sent' cuando se crea la request
+                status: "sent",
+                ip_address: clientIP,  // Agregar IP del cliente
+                location: `${city}, ${region}, ${country}`
             }, { transaction: t });
 
             // Commit de la transacción
