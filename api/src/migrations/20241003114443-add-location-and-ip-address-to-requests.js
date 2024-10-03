@@ -14,9 +14,6 @@ module.exports = {
   },
   down: async (queryInterface, Sequelize) => {
       await queryInterface.removeColumn('Requests', 'location');
-
       await queryInterface.removeColumn('Requests', 'ip_address');
   }
 };
-
-
