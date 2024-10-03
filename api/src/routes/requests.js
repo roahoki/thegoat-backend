@@ -44,7 +44,7 @@ router.post("/", async (ctx) => {
     try {
         const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id } = ctx.request.body;
 
-        if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof quantity !== 'number' || quantity <= 0 || !isValidDate(date)) {
+        if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
             ctx.body = { message: "Invalid request format." };
             return;
