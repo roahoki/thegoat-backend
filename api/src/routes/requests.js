@@ -232,6 +232,7 @@ router.get("/:id", async (ctx) => {
 
 // Endpoint para manejar la validación de las requests
 router.patch("/validate", async (ctx) => {
+    return
     let t;
     try {
         const { request_id, group_id, seller, valid } = ctx.request.body;
