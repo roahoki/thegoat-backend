@@ -254,7 +254,7 @@ router.patch("/validate", async (ctx) => {
         const fixture = await Fixture.findOne({ where: { id: request.fixture_id }, transaction: t });
         if (!fixture) {
             ctx.status = 404;
-            ctx.body = { error: "Fixture not found" };
+            ctx.body = "Fixture not found";
             return;
         }
 
