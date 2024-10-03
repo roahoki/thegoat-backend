@@ -7,11 +7,19 @@ const config = require(__dirname + '/../config/config.js')[env];
 const db = {};
 
 let sequelize;
+const poolConfig = {
+    max: 5,
+    min: 0,
+    acquire: 3000000,
+    idle: 10000,
+};
+
 if (config.use_env_variable) {
-    sequelize = new Sequelize(process.env[config.use_env_variable], config);
+    sequelize = new Sequelize(process.env[config.use_env_variable], { ...config, pool: poolConfig });
 } else {
-    sequelize = new Sequelize(config.database, config.username, config.password, config);
+    sequelize = new Sequelize(config.database, config.username, config.password, { ...config, pool: poolConfig });
 }
+
 
 fs
     .readdirSync(__dirname)
