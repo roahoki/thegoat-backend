@@ -5,13 +5,18 @@ const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
 const axios = require('axios');
 const fs = require('fs');
+const dotenv = require('dotenv');
+const moment = require('moment');
+
+// Cargar variables de entorno desde el archivo .env
+dotenv.config();
 
 // Configuración de conexión MQTT
 const mqttClient = mqtt.connect({
-  host: 'broker.iic2173.org',
-  port: 9000,
-  username: 'students',
-  password: 'iic2173-2024-2-students'
+  host: process.env.BROKER_HOST,
+  port: process.env.BROKER_PORT,
+  username: process.env.BROKER_USER,
+  password: process.env.BROKER_PASSWORD
 });
 
 mqttClient.on("error", (err) => {
@@ -50,6 +55,10 @@ router.post("/", async (ctx) => {
             return;
         }
 
+        const dateOnly = new Date(datetime).toISOString().split('T')[0];
+        console.log('Date without time:', dateOnly);
+        ctx.request.body.date = dateOnly;
+        
         const clientIP = ctx.request.ip;
         const ipResponse = await axios.get(`http://ip-api.com/json/${clientIP}`);
         const { city, region, country } = ipResponse.data;
@@ -161,8 +170,6 @@ router.post("/", async (ctx) => {
         }
     }
 });
-
-
 
 // Endpoint para obtener todas las requests
 router.get("/", async (ctx) => {
@@ -401,7 +408,6 @@ router.post("/history", async (ctx) => {
     ctx.status = 200;
     ctx.body = { message: "History processed successfully." };
 });
-
 
 
 module.exports = router;

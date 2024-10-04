@@ -1,4 +1,14 @@
 services:
+  listener:
+    build: ./listener
+    depends_on:
+      - api
+    networks:
+      - app-network
+    restart: always
+    env_file:
+      - ./.env
+
   api:
     build: ./api
     ports:
@@ -15,13 +25,7 @@ services:
     volumes:
       - ./api:/app
       - /app/node_modules
-  listener:
-    build: ./listener
-    depends_on:
-      - api
-    networks:
-      - app-network
-    restart: always
+
 
   db:
     image: postgres:15
