@@ -6,18 +6,18 @@ const mqtt = require('mqtt');
 const axios = require('axios');
 const fs = require('fs');
 
-// Configuración de conexión MQTT
-const mqttClient = mqtt.connect({
-  host: 'broker.iic2173.org',
-  port: 9000,
-  username: 'students',
-  password: 'iic2173-2024-2-students'
-});
+// // Configuración de conexión MQTT
+// const mqttClient = mqtt.connect({
+//   host: 'broker.iic2173.org',
+//   port: 9000,
+//   username: 'students',
+//   password: 'iic2173-2024-2-students'
+// });
 
-mqttClient.on("error", (err) => {
-    console.log("Error connecting to MQTT broker:", err);
-    mqttClient.end();
-});
+// mqttClient.on("error", (err) => {
+//     console.log("Error connecting to MQTT broker:", err);
+//     mqttClient.end();
+// });
 
 // Función auxiliar para reservar bonos
 async function reservarBonos(fixture_id, quantity, transaction) {

@@ -103,4 +103,48 @@ router.put('/wallet', async (ctx) => {
   }
 });
 
+// GET /users
+router.get('/users', async (ctx) => {
+  try {
+    const users = await Usuario.findAll();
+    ctx.status = 200;
+    ctx.body = { users };
+  } catch (error) {
+    console.error(error);
+    ctx.status = 500;
+    ctx.body = { error: 'An error occurred while retrieving users.' };
+  }
+});
+
+// GET /users/:id
+router.get('/users/:id', async (ctx) => {
+  const { id } = ctx.params;
+
+  // Validate input
+  if (!id) {
+    ctx.status = 400;
+    ctx.body = { error: 'Missing required fields.' };
+    return;
+  }
+
+  try {
+    const user = await Usuario.findOne({
+      where: { id },
+    });
+
+    if (!user) {
+      ctx.status = 404;
+      ctx.body = { error: 'User not found.' };
+      return;
+    }
+
+    ctx.status = 200;
+    ctx.body = { user };
+  } catch (error) {
+    console.error(error);
+    ctx.status = 500;
+    ctx.body = { error: 'An error occurred while retrieving the user info.' };
+  }
+});
+
 module.exports = router;
