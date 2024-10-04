@@ -5,19 +5,23 @@ const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
 const axios = require('axios');
 const fs = require('fs');
+const dotenv = require('dotenv');
 
-// // Configuración de conexión MQTT
-// const mqttClient = mqtt.connect({
-//   host: 'broker.iic2173.org',
-//   port: 9000,
-//   username: 'students',
-//   password: 'iic2173-2024-2-students'
-// });
+// Cargar variables de entorno desde el archivo .env
+dotenv.config();
 
-// mqttClient.on("error", (err) => {
-//     console.log("Error connecting to MQTT broker:", err);
-//     mqttClient.end();
-// });
+// Configuración de conexión MQTT
+const mqttClient = mqtt.connect({
+  host: process.env.BROKER_HOST,
+  port: process.env.BROKER_PORT,
+  username: process.env.BROKER_USER,
+  password: process.env.BROKER_PASSWORD
+});
+
+mqttClient.on("error", (err) => {
+    console.log("Error connecting to MQTT broker:", err);
+    mqttClient.end();
+});
 
 // Función auxiliar para reservar bonos
 async function reservarBonos(fixture_id, quantity, transaction) {
@@ -161,8 +165,6 @@ router.post("/", async (ctx) => {
         }
     }
 });
-
-
 
 // Endpoint para obtener todas las requests
 router.get("/", async (ctx) => {
@@ -401,7 +403,6 @@ router.post("/history", async (ctx) => {
     ctx.status = 200;
     ctx.body = { message: "History processed successfully." };
 });
-
 
 
 module.exports = router;
