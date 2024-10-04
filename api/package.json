@@ -5,6 +5,7 @@
   "type": "commonjs",
   "license": "MIT",
   "dependencies": {
+    "@koa/cors": "^5.0.0",
     "axios": "^1.7.6",
     "dotenv": "^16.4.5",
     "koa": "^2.15.3",

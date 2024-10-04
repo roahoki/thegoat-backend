@@ -5,6 +5,8 @@ const { Usuario } = require('../models');
 // POST /users/login
 router.post('/login', async (ctx) => {
   const { email, name, auth0Token } = ctx.request.body;
+  console.log("\n\nREQUEST BODY:", ctx.request.body);
+  
 
   // Validate input
   if (!email || !name || !auth0Token) {
