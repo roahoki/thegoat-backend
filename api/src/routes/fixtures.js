@@ -106,8 +106,6 @@ router.post("/update", async (ctx) => {
 router.get("/data", async (ctx) => {
     const { page = 1, count = 25, home, visit, date } = ctx.query;
     console.log('Query Values: ', ctx.query);
-    console.log(ctx)
-    console.log('CTX')
 
     // Get today's date in UTC format
     const today = new Date().toISOString().split('T')[0];
@@ -192,7 +190,7 @@ router.get("/data", async (ctx) => {
             },
         ],
         order: [['updatedAt', 'DESC']],
-        limit: 1, // dejar como limit
+        limit,
         offset: (page - 1) * limit,
     });
 
@@ -225,14 +223,5 @@ router.get("/data/:id", async (ctx) => {
 
     ctx.body = fixture;
 });
-
-
-
-
-
-
-
-
-
 
 module.exports = router;
