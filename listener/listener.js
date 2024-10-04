@@ -1,6 +1,10 @@
 const mqtt = require("mqtt");
 const axios = require("axios");
 const fs = require("fs");
+const dotenv = require("dotenv");
+const { log } = require("console");
+
+dotenv.config();
 
 var mqttClient;
 
@@ -35,7 +39,7 @@ function connectToBroker() {
 
     // Recibir mensajes
     mqttClient.on("message", (topic, message, packet) => {
-        console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
+        // console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
 
         // Guardar el mensaje en un archivo
         fs.writeFileSync('output.txt', message.toString(), 'utf8');
@@ -55,7 +59,8 @@ function connectToBroker() {
                 }
             })
             .then(response => {
-                console.log(`Message sent to API for topic ${topic}:`, response.data);
+                // console.log(`Message sent to API for topic ${topic}:`, response.data);
+                console.log('update fixtures success');
             })
             .catch(error => {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
@@ -74,7 +79,9 @@ function connectToBroker() {
                     }
                 })
                 .then(response => {
-                    console.log(`Message sent to API for topic ${topic}:`, response.data);
+                    // console.log(`Message sent to API for topic ${topic}:`, response.data);
+                    console.log('VALIDATION SENT');
+
                 })
                 .catch(error => {
                     console.error(`Error sending message to API for topic ${topic}:`, error);
@@ -98,6 +105,7 @@ function connectToBroker() {
             })
             .then(response => {
                 console.log(`Message sent to API for topic ${topic}:`, response.data);
+                // console.log('Request success');
             })
             .catch(error => {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
@@ -112,7 +120,8 @@ function connectToBroker() {
                 }
             })
             .then(response => {
-                console.log(`Message sent to API for topic ${topic}:`, response.data);
+                // console.log(`Message sent to API for topic ${topic}:`, response.data);
+                console.log('History success');
             })
             .catch(error => {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
