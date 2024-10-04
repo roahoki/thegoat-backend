@@ -14,6 +14,7 @@
     "koa-logger": "^3.2.1",
     "koa-parser": "^1.0.8",
     "koa-router": "^12.0.1",
+    "moment": "^2.30.1",
     "mqtt": "^5.10.1",
     "nodemon": "^3.1.4",
     "pg": "^8.12.0",

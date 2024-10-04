@@ -6,6 +6,7 @@ const mqtt = require('mqtt');
 const axios = require('axios');
 const fs = require('fs');
 const dotenv = require('dotenv');
+const moment = require('moment');
 
 // Cargar variables de entorno desde el archivo .env
 dotenv.config();
@@ -54,6 +55,10 @@ router.post("/", async (ctx) => {
             return;
         }
 
+        const dateOnly = new Date(datetime).toISOString().split('T')[0];
+        console.log('Date without time:', dateOnly);
+        ctx.request.body.date = dateOnly;
+        
         const clientIP = ctx.request.ip;
         const ipResponse = await axios.get(`http://ip-api.com/json/${clientIP}`);
         const { city, region, country } = ipResponse.data;
