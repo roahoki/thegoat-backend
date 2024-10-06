@@ -1,5 +1,5 @@
 const Router = require("koa-router");
-const { Request, Usuario, Fixture, ExternalRequest, Team } = require("../models");
+const { Request, Usuario, Fixture, ExternalRequest, Team, Odd } = require("../models");
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
@@ -7,6 +7,7 @@ const axios = require('axios');
 const fs = require('fs');
 const dotenv = require('dotenv');
 const moment = require('moment');
+const db = require("../models");
 
 // Cargar variables de entorno desde el archivo .env
 dotenv.config();
@@ -50,8 +51,6 @@ router.post("/", async (ctx) => {
     try {
         const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, usuarioId, status, request_id: incoming_request_id } = ctx.request.body;
 
-        // console.log(`______________________________________________\n\tIncoming request:User id${user_id}_____________________________`);
-
         if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
             ctx.body = { message: "Invalid request format." };
@@ -59,21 +58,28 @@ router.post("/", async (ctx) => {
         }
 
         const clientIP = ctx.request.ip;
-        const ipResponse = await axios.get(`http://ip-api.com/json/${clientIP}`);
-        const { city, region, country } = ipResponse.data;
+        let city = "unknown", region = "unknown", country = "unknown";
+
+        try {
+            const ipResponse = await axios.get(`http://ip-api.com/json/${clientIP}`);
+            city = ipResponse.data.city || "unknown";
+            region = ipResponse.data.region || "unknown";
+            country = ipResponse.data.country || "unknown";
+        } catch (error) {
+            console.error("Error fetching location:", error);
+        }
 
         let request_id;
       
         if (group_id == '15' && usuarioId && typeof request_id === 'undefined') {
-            // console.log("HOLA ME LLEGO DEL GRUPO 15");
 
             // Generar un nuevo UUID para la request interna
             request_id = uuidv4();
 
-            // Reservar los bonos reduciendo la cantidad disponible
-            await reservarBonos(fixture_id, quantity, t);
+            // Reservar los bonos reduciendo la cantidad disponible LO HACE
+            await reservarBonos(fixture_id, quantity, t); 
 
-            // Crear la nueva request en la base de datos con estado 'sent'
+            // Crear la nueva request en la base de datos con estado 'sent' FUNCIONA
             const newRequest = await Request.create({
                 request_id,
                 group_id,
@@ -117,12 +123,11 @@ router.post("/", async (ctx) => {
                     ctx.status = 500;
                     ctx.body = { message: "Failed to publish message to broker." };
                 } else {
-                    // console.log('Mensaje publicado en el canal fixtures/requests:\n\n\n PAYLOAD \n\n\n', messagePayload);
+                    console.log('Mensaje publicado en el canal fixtures/requests');
                     ctx.status = 201;
                     ctx.body = { message: "Request successfully created and message sent to broker!", request: newRequest };
                 }
             });
-
     
         } else if (group_id !== '15') {
             // Si el group_id no es 15, manejar como ExternalRequest
@@ -154,9 +159,10 @@ router.post("/", async (ctx) => {
 
         } else {
             // Si el group_id es 15, pero la request ya existe o no tiene user_id
-
+            console.log("Request ID:", incoming_request_id);
+            console.log("Group ID:", group_id);
             ctx.status = 400;
-            ctx.body = { message: "Invalid request. Either user_id is missing, or the request already exists." };
+            ctx.body = { message: "Either user_id is missing, or the request already exists." };
         }
 
     } catch (error) {
@@ -277,7 +283,9 @@ router.patch("/validate", async (ctx) => {
 
         // Handle accepted requests for group 15
         if (group_id == "15" && valid) {
+            console.log("ENtre al if de validate grupo 15")
             const usuario = await Usuario.findOne({ where: { id: request.usuarioId }, transaction: t });
+            console.log("Usuario", usuario)
             if (!usuario) {
                 ctx.status = 404;
                 ctx.body = { error: "Usuario not found" };
@@ -333,7 +341,8 @@ router.post("/history", async (ctx) => {
                 where: { id: fixtureId },
                 include: [
                     { model: Team, as: 'homeTeam' },  // Incluir el equipo local
-                    { model: Team, as: 'awayTeam' }   // Incluir el equipo visitante
+                    { model: Team, as: 'awayTeam' },   // Incluir el equipo visitante
+                    { model: Odd, as: 'odds'}
                 ]
             });
 
@@ -374,24 +383,26 @@ router.post("/history", async (ctx) => {
 
                     // Si ganó la apuesta, actualizar la billetera del usuario
                     if (hasWon) {
-                        const usuario = await Usuario.findOne({ where: { id: request.user_id } });
+                        const usuario = await Usuario.findOne({ where: { id: request.usuarioId } });
                         if (usuario) {
                             // Obtener los odds desde la fixture
-                            const oddsArray = dbFixture.odds.find(odd => odd.name == "Match Winner");
-                            const odds = oddsArray ? oddsArray.values : [];
+                            const oddsArray = dbFixture.odds || [];
+                            const oddsMatchWinner = oddsArray.find(odd => odd.dataValues.name === "Match Winner");
+                            const odds = oddsMatchWinner ? oddsMatchWinner.dataValues : null;
 
                             // Determinar el odd correspondiente al resultado
                             let winningOdd = null;
-                            if (winningTeam == dbFixture.homeTeam.name) {
-                                winningOdd = odds.find(odd => odd.value == "Home");
-                            } else if (winningTeam == dbFixture.awayTeam.name) {
-                                winningOdd = odds.find(odd => odd.value == "Away");
-                            } else if (winningTeam == "---") {
-                                winningOdd = odds.find(odd => odd.value == "Draw");
+                            if (winningTeam === dbFixture.homeTeam.name) {
+                                winningOdd = odds ? oddsArray.find(odd => odd.dataValues.value === "Home") : null;
+                            } else if (winningTeam === dbFixture.awayTeam.name) {
+                                winningOdd = odds ? oddsArray.find(odd => odd.dataValues.value === "Away") : null;
+                            } else if (winningTeam === "---") {
+                                winningOdd = odds ? oddsArray.find(odd => odd.dataValues.value === "Draw") : null;
                             }
 
                             if (winningOdd) {
                                 const winnings = 1000 * request.quantity * parseFloat(winningOdd.odd); // Calcular las ganancias
+                                console.log("AGREGANDO PLATA A LA BILLETERA")
                                 usuario.billetera += winnings; // Agregar ganancias a la billetera
                                 await usuario.save(); // Guardar los cambios en la billetera
                             }
