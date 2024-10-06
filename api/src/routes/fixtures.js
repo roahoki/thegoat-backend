@@ -192,7 +192,7 @@ router.get("/data", async (ctx) => {
             },
         ],
         order: [['updatedAt', 'DESC']],
-        limit: 1, // dejar como limit
+        limit: 3, // dejar como limit
         offset: (page - 1) * limit,
     });
 
