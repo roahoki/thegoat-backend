@@ -68,7 +68,7 @@ function connectToBroker() {
             
             const apiEndpoint = `${api}/requests/validate`;
             let attempts = 0;
-            const maxRetries = 0;
+            const maxRetries = 3;
         
             const sendValidation = () => {
                 axios.patch(apiEndpoint, parsedMessage, {
@@ -96,26 +96,29 @@ function connectToBroker() {
         } else if (topic === "fixtures/requests") {
             // console.log("\n\n\n\nProcesando mensaje de fixtures/requests...");
             apiEndpoint = `${api}/requests`;
-
-            if (parsedMessage.group_id == '23'){
+        
+            if (parsedMessage.group_id == '23') {
                 a = 1;
-                
             } else {
-            console.log("Procesando mensaje de fixtures/requests... NO 23");
-            
-            axios.post(apiEndpoint, parsedMessage, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                console.log(`Message sent to API for topic ${topic}:`, response.data);
-                // console.log('Request success');
-            })
-            .catch(error => {
-                console.error(`Error sending message to API for topic ${topic}:`, error);
-            });
-
+                console.log("Procesando mensaje de fixtures/requests... NO 23");
+                
+                axios.post(apiEndpoint, parsedMessage, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log(`Message sent to API for topic ${topic}:`, response.data);
+                    // console.log('Request success');
+                })
+                .catch(error => {
+                    if (error.response && error.response.data && 
+                        (error.response.data.message === "Either user_id is missing, or the request already exists.")) {
+                        console.log("Ignoring error because it is our request coming back.");
+                        return; // Salir del bloque catch sin hacer nada
+                    }
+                    console.error(`Error sending message to API for topic ${topic}:`, error);
+                });
             }
 
         } else if (topic === "fixtures/history") {
