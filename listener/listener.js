@@ -1,14 +1,18 @@
 const mqtt = require("mqtt");
 const axios = require("axios");
 const fs = require("fs");
+const dotenv = require("dotenv");
+
+dotenv.config();
 
 var mqttClient;
 
-const mqttHost = "broker.iic2173.org";
-const port = "9000";
-const user = "students";
-const password = "iic2173-2024-2-students";
-const protocol = "mqtt";
+const mqttHost = process.env.MQTT_HOST;
+const port = process.env.MQTT_PORT;
+const user = process.env.MQTT_USER;
+const password = process.env.MQTT_PASSWORD;
+const protocol = process.env.MQTT_PROTOCOL;
+const api = process.env.API_URL;
 
 function connectToBroker() {
     const clientId = "client_THEGOAT";
@@ -35,10 +39,6 @@ function connectToBroker() {
 
     // Recibir mensajes
     mqttClient.on("message", (topic, message, packet) => {
-        console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
-
-        // Guardar el mensaje en un archivo
-        fs.writeFileSync('output.txt', message.toString(), 'utf8');
 
         // Parsear el mensaje a objeto JSON
         const parsedMessage = JSON.parse(message.toString());
@@ -48,24 +48,27 @@ function connectToBroker() {
 
         if (topic === "fixtures/info") {
             console.log("Procesando mensaje de fixtures/info...");
-            apiEndpoint = 'http://api:3000/fixtures/update';
+            apiEndpoint = `${api}/fixtures/update`;
             axios.post(apiEndpoint, parsedMessage, {
                 headers: {
                     'Content-Type': 'application/json'
                 }
             })
             .then(response => {
-                console.log(`Message sent to API for topic ${topic}:`, response.data);
+                // console.log(`Message sent to API for topic ${topic}:`, response.data);
+                console.log('update fixtures success');
             })
             .catch(error => {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
             });
             
-        } else if (topic === "fixtures/validation") {
-            console.log("Procesando mensaje de fixtures/validation...");
-            const apiEndpoint = 'http://api:3000/requests/validate';
+        } else if (topic == "fixtures/validation") {
+            console.log("\n\nProcesando mensaje de fixtures/validation...\n\n");
+            console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
+
+            const apiEndpoint = `${api}/requests/validate`;
             let attempts = 0;
-            const maxRetries = 3;
+            const maxRetries = 0;
         
             const sendValidation = () => {
                 axios.patch(apiEndpoint, parsedMessage, {
@@ -74,7 +77,9 @@ function connectToBroker() {
                     }
                 })
                 .then(response => {
-                    console.log(`Message sent to API for topic ${topic}:`, response.data);
+                    // console.log(`Message sent to API for topic ${topic}:`, response.data);
+                    console.log('VALIDATION SENT');
+
                 })
                 .catch(error => {
                     console.error(`Error sending message to API for topic ${topic}:`, error);
@@ -89,8 +94,15 @@ function connectToBroker() {
             sendValidation();
 
         } else if (topic === "fixtures/requests") {
-            console.log("Procesando mensaje de fixtures/requests...");
-            apiEndpoint = 'http://api:3000/requests';
+            // console.log("Procesando mensaje de fixtures/requests...");
+            apiEndpoint = `${api}/requests`;
+
+            if (parsedMessage.group_id == '23'){
+                a = 1;
+                
+            } else {
+            console.log("Procesando mensaje de fixtures/requests... NO 23");
+            
             axios.post(apiEndpoint, parsedMessage, {
                 headers: {
                     'Content-Type': 'application/json'
@@ -98,21 +110,25 @@ function connectToBroker() {
             })
             .then(response => {
                 console.log(`Message sent to API for topic ${topic}:`, response.data);
+                // console.log('Request success');
             })
             .catch(error => {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
             });
 
+            }
+
         } else if (topic === "fixtures/history") {
             console.log("Procesando mensaje de fixtures/history...");
-            apiEndpoint = 'http://api:3000/requests/history';
+            apiEndpoint = `${api}/requests/history`;
             axios.post(apiEndpoint, parsedMessage, {
                 headers: {
                     'Content-Type': 'application/json'
                 }
             })
             .then(response => {
-                console.log(`Message sent to API for topic ${topic}:`, response.data);
+                // console.log(`Message sent to API for topic ${topic}:`, response.data);
+                console.log('History success');
             })
             .catch(error => {
                 console.error(`Error sending message to API for topic ${topic}:`, error);

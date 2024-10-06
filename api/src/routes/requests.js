@@ -5,17 +5,22 @@ const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
 const axios = require('axios');
 const fs = require('fs');
+const dotenv = require('dotenv');
+const moment = require('moment');
+
+// Cargar variables de entorno desde el archivo .env
+dotenv.config();
 
 // Configuración de conexión MQTT
 const mqttClient = mqtt.connect({
-  host: 'broker.iic2173.org',
-  port: 9000,
-  username: 'students',
-  password: 'iic2173-2024-2-students'
+  host: process.env.BROKER_HOST,
+  port: process.env.BROKER_PORT,
+  username: process.env.BROKER_USER,
+  password: process.env.BROKER_PASSWORD
 });
 
 mqttClient.on("error", (err) => {
-    console.log("Error connecting to MQTT broker:", err);
+    // console.log("Error connecting to MQTT broker:", err);
     mqttClient.end();
 });
 
@@ -38,11 +43,15 @@ async function reservarBonos(fixture_id, quantity, transaction) {
     await fixture.save({ transaction });
 }
 
+
+// Endpoint para crear una nueva request
 router.post("/", async (ctx) => {
     const t = await Request.sequelize.transaction();  // Iniciar transacción
 
     try {
         const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id } = ctx.request.body;
+
+        // console.log(`______________________________________________\n\tIncoming request:User id${user_id}_____________________________`);
 
         if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
@@ -50,14 +59,18 @@ router.post("/", async (ctx) => {
             return;
         }
 
+        // const dateOnly = moment(datetime).format('YYYY-MM-DD');
+        // console.log('Date without time:', dateOnly);
+        // ctx.request.body.date = dateOnly;
+        
         const clientIP = ctx.request.ip;
         const ipResponse = await axios.get(`http://ip-api.com/json/${clientIP}`);
         const { city, region, country } = ipResponse.data;
 
         let request_id;
-
+      
         if (group_id == '15' && user_id && typeof request_id === 'undefined') {
-            console.log("HOLA ME LLEGO DEL GRUPO 15");
+            // console.log("HOLA ME LLEGO DEL GRUPO 15");
 
             // Generar un nuevo UUID para la request interna
             request_id = uuidv4();
@@ -78,7 +91,7 @@ router.post("/", async (ctx) => {
                 datetime,
                 quantity,
                 seller: 0,  // Siempre es 0
-                user_id,
+                usuarioId: user_id,
                 status: "sent",
                 ip_address: clientIP,  // Agregar IP del cliente
                 location: `${city}, ${region}, ${country}`
@@ -109,12 +122,13 @@ router.post("/", async (ctx) => {
                     ctx.status = 500;
                     ctx.body = { message: "Failed to publish message to broker." };
                 } else {
-                    console.log('Mensaje publicado en el canal fixtures/requests:', messagePayload);
+                    // console.log('Mensaje publicado en el canal fixtures/requests:\n\n\n PAYLOAD \n\n\n', messagePayload);
                     ctx.status = 201;
                     ctx.body = { message: "Request successfully created and message sent to broker!", request: newRequest };
                 }
             });
 
+    
         } else if (group_id !== '15') {
             // Si el group_id no es 15, manejar como ExternalRequest
             request_id = incoming_request_id;
@@ -145,6 +159,7 @@ router.post("/", async (ctx) => {
 
         } else {
             // Si el group_id es 15, pero la request ya existe o no tiene user_id
+
             ctx.status = 400;
             ctx.body = { message: "Invalid request. Either user_id is missing, or the request already exists." };
         }
@@ -161,8 +176,6 @@ router.post("/", async (ctx) => {
         }
     }
 });
-
-
 
 // Endpoint para obtener todas las requests
 router.get("/", async (ctx) => {
@@ -232,10 +245,22 @@ router.get("/:id", async (ctx) => {
 
 // Endpoint para manejar la validación de las requests
 router.patch("/validate", async (ctx) => {
+
     let t;
+    console.log('\n \n \n \n \n \n \n \n \n \n \n \n Validación \n \n \n \n \n \n \n \n \n \n \n \n');
+
     try {
         const { request_id, group_id, seller, valid } = ctx.request.body;
 
+        console.log('\nRequest:\n\n', ctx.request.body);
+
+//         {
+//    request_id: 'a79a97f7-c314-4611-9a89-e2ea7478cc8a',
+//    group_id: 15,
+//    seller: 0,
+//    valid: true
+//  }
+        
         // Start transaction
         t = await Request.sequelize.transaction();
 
@@ -268,7 +293,7 @@ router.patch("/validate", async (ctx) => {
 
         // Handle accepted requests for group 15
         if (group_id == "15" && valid) {
-            const usuario = await Usuario.findOne({ where: { id: request.user_id }, transaction: t });
+            const usuario = await Usuario.findOne({ where: { id: request.usuarioId }, transaction: t });
             if (!usuario) {
                 ctx.status = 404;
                 ctx.body = { error: "Usuario not found" };
@@ -357,7 +382,7 @@ router.post("/history", async (ctx) => {
                     const expectedResult = request.result; // El resultado que apostaron (nombre del equipo)
 
                     // Verifica si el resultado esperado coincide con el resultado real
-                    const hasWon = (expectedResult === winningTeam || (expectedResult === "---" && winningTeam === "---"));
+                    const hasWon = (expectedResult == winningTeam || (expectedResult == "---" && winningTeam == "---"));
 
                     // Cambiar el estado de la request
                     const newStatus = hasWon ? "won" : "lost";
@@ -368,21 +393,21 @@ router.post("/history", async (ctx) => {
                         const usuario = await Usuario.findOne({ where: { id: request.user_id } });
                         if (usuario) {
                             // Obtener los odds desde la fixture
-                            const oddsArray = dbFixture.odds.find(odd => odd.name === "Match Winner");
+                            const oddsArray = dbFixture.odds.find(odd => odd.name == "Match Winner");
                             const odds = oddsArray ? oddsArray.values : [];
 
                             // Determinar el odd correspondiente al resultado
                             let winningOdd = null;
-                            if (winningTeam === dbFixture.homeTeam.name) {
-                                winningOdd = odds.find(odd => odd.value === "Home");
-                            } else if (winningTeam === dbFixture.awayTeam.name) {
-                                winningOdd = odds.find(odd => odd.value === "Away");
-                            } else if (winningTeam === "---") {
-                                winningOdd = odds.find(odd => odd.value === "Draw");
+                            if (winningTeam == dbFixture.homeTeam.name) {
+                                winningOdd = odds.find(odd => odd.value == "Home");
+                            } else if (winningTeam == dbFixture.awayTeam.name) {
+                                winningOdd = odds.find(odd => odd.value == "Away");
+                            } else if (winningTeam == "---") {
+                                winningOdd = odds.find(odd => odd.value == "Draw");
                             }
 
                             if (winningOdd) {
-                                const winnings = 100 * request.quantity * parseFloat(winningOdd.odd); // Calcular las ganancias
+                                const winnings = 1000 * request.quantity * parseFloat(winningOdd.odd); // Calcular las ganancias
                                 usuario.billetera += winnings; // Agregar ganancias a la billetera
                                 await usuario.save(); // Guardar los cambios en la billetera
                             }
@@ -401,6 +426,30 @@ router.post("/history", async (ctx) => {
     ctx.body = { message: "History processed successfully." };
 });
 
-
+router.get('/bond', async (ctx) => {
+    try {
+      const fixtures = await Fixtures.findAll(); // Assuming you're using Sequelize or similar ORM
+  
+      // Extract the relevant data
+      const data = fixtures.map(fixture => ({
+        fixture_id: fixture.id, // Assuming 'id' is the fixture ID field
+        bonos_disponibles: fixture.bonos_disponibles // Assuming 'bonos_disponibles' is a field in the fixture
+      }));
+  
+      // Return the data as JSON
+      ctx.body = {
+        success: true,
+        data: data
+      };
+    } catch (error) {
+      // Handle any errors
+      ctx.status = 500;
+      ctx.body = {
+        success: false,
+        message: 'Failed to fetch fixtures',
+        error: error.message
+      };
+    }
+  });
 
 module.exports = router;
