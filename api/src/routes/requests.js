@@ -48,7 +48,7 @@ router.post("/", async (ctx) => {
     const t = await Request.sequelize.transaction();  // Iniciar transacción
 
     try {
-        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id } = ctx.request.body;
+        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, usuarioId, status, request_id: incoming_request_id } = ctx.request.body;
 
         // console.log(`______________________________________________\n\tIncoming request:User id${user_id}_____________________________`);
 
@@ -64,7 +64,7 @@ router.post("/", async (ctx) => {
 
         let request_id;
       
-        if (group_id == '15' && user_id && typeof request_id === 'undefined') {
+        if (group_id == '15' && usuarioId && typeof request_id === 'undefined') {
             // console.log("HOLA ME LLEGO DEL GRUPO 15");
 
             // Generar un nuevo UUID para la request interna
@@ -86,7 +86,7 @@ router.post("/", async (ctx) => {
                 datetime,
                 quantity,
                 seller: 0,  // Siempre es 0
-                usuarioId: user_id,
+                usuarioId,
                 status: "sent",
                 ip_address: clientIP,  // Agregar IP del cliente
                 location: `${city}, ${region}, ${country}`
