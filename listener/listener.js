@@ -39,10 +39,6 @@ function connectToBroker() {
 
     // Recibir mensajes
     mqttClient.on("message", (topic, message, packet) => {
-        // console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
-
-        // Guardar el mensaje en un archivo
-        fs.writeFileSync('output.txt', message.toString(), 'utf8');
 
         // Parsear el mensaje a objeto JSON
         const parsedMessage = JSON.parse(message.toString());
@@ -66,11 +62,13 @@ function connectToBroker() {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
             });
             
-        } else if (topic === "fixtures/validation") {
-            console.log("Procesando mensaje de fixtures/validation...");
+        } else if (topic == "fixtures/validation") {
+            console.log("\n\nProcesando mensaje de fixtures/validation...\n\n");
+            console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
+
             const apiEndpoint = `${api}/requests/validate`;
             let attempts = 0;
-            const maxRetries = 3;
+            const maxRetries = 0;
         
             const sendValidation = () => {
                 axios.patch(apiEndpoint, parsedMessage, {
@@ -96,8 +94,15 @@ function connectToBroker() {
             sendValidation();
 
         } else if (topic === "fixtures/requests") {
-            console.log("Procesando mensaje de fixtures/requests...");
+            // console.log("Procesando mensaje de fixtures/requests...");
             apiEndpoint = `${api}/requests`;
+
+            if (parsedMessage.group_id == '23'){
+                a = 1;
+                
+            } else {
+            console.log("Procesando mensaje de fixtures/requests... NO 23");
+            
             axios.post(apiEndpoint, parsedMessage, {
                 headers: {
                     'Content-Type': 'application/json'
@@ -110,6 +115,8 @@ function connectToBroker() {
             .catch(error => {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
             });
+
+            }
 
         } else if (topic === "fixtures/history") {
             console.log("Procesando mensaje de fixtures/history...");
