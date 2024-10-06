@@ -246,7 +246,6 @@ router.get("/:id", async (ctx) => {
 // Endpoint para manejar la validación de las requests
 router.patch("/validate", async (ctx) => {
 
-    
     let t;
     console.log('\n \n \n \n \n \n \n \n \n \n \n \n Validación \n \n \n \n \n \n \n \n \n \n \n \n');
 
