@@ -2,6 +2,8 @@
 
 si el usuario compra 10 bonos y quedaban 9, no compra ninguno
 
+si un usuario no tiene plata suficiente en la billetera, por lógica de frontend nunca va a poder mandar una request
+
 EN LOCAL:
 
 RF01 (lOGIN USER) ✅

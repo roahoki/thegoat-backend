@@ -62,10 +62,10 @@ function connectToBroker() {
                 console.error(`Error sending message to API for topic ${topic}:`, error);
             });
             
-        } else if (topic == "fixtures/validation") {
+        } else if (topic === "fixtures/validation") {
             console.log("\n\nProcesando mensaje de fixtures/validation...\n\n");
             console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
-
+            
             const apiEndpoint = `${api}/requests/validate`;
             let attempts = 0;
             const maxRetries = 0;
@@ -94,7 +94,7 @@ function connectToBroker() {
             sendValidation();
 
         } else if (topic === "fixtures/requests") {
-            // console.log("Procesando mensaje de fixtures/requests...");
+            // console.log("\n\n\n\nProcesando mensaje de fixtures/requests...");
             apiEndpoint = `${api}/requests`;
 
             if (parsedMessage.group_id == '23'){

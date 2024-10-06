@@ -20,7 +20,6 @@ const mqttClient = mqtt.connect({
 });
 
 mqttClient.on("error", (err) => {
-    // console.log("Error connecting to MQTT broker:", err);
     mqttClient.end();
 });
 
@@ -59,10 +58,6 @@ router.post("/", async (ctx) => {
             return;
         }
 
-        // const dateOnly = moment(datetime).format('YYYY-MM-DD');
-        // console.log('Date without time:', dateOnly);
-        // ctx.request.body.date = dateOnly;
-        
         const clientIP = ctx.request.ip;
         const ipResponse = await axios.get(`http://ip-api.com/json/${clientIP}`);
         const { city, region, country } = ipResponse.data;
@@ -247,20 +242,9 @@ router.get("/:id", async (ctx) => {
 router.patch("/validate", async (ctx) => {
 
     let t;
-    console.log('\n \n \n \n \n \n \n \n \n \n \n \n Validación \n \n \n \n \n \n \n \n \n \n \n \n');
 
-    try {
+    try { 
         const { request_id, group_id, seller, valid } = ctx.request.body;
-
-        console.log('\nRequest:\n\n', ctx.request.body);
-
-//         {
-//    request_id: 'a79a97f7-c314-4611-9a89-e2ea7478cc8a',
-//    group_id: 15,
-//    seller: 0,
-//    valid: true
-//  }
-        
         // Start transaction
         t = await Request.sequelize.transaction();
 
@@ -302,7 +286,7 @@ router.patch("/validate", async (ctx) => {
 
             usuario.billetera -= 1000 * request.quantity;
             if (usuario.billetera < 0) {
-                ctx.status = 400;
+                ctx.status = 402;
                 ctx.body = { error: "Insufficient funds in the user's billetera." };
                 return;
             }
