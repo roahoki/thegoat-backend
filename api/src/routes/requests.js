@@ -1,21 +1,26 @@
 const Router = require("koa-router");
-const { Request, Usuario, Fixture, ExternalRequest, Team } = require("../models");
+const { Request, Usuario, Fixture, ExternalRequest, Team, Odd } = require("../models");
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
 const axios = require('axios');
 const fs = require('fs');
+const dotenv = require('dotenv');
+const moment = require('moment');
+const db = require("../models");
+
+// Cargar variables de entorno desde el archivo .env
+dotenv.config();
 
 // Configuración de conexión MQTT
 const mqttClient = mqtt.connect({
-  host: 'broker.iic2173.org',
-  port: 9000,
-  username: 'students',
-  password: 'iic2173-2024-2-students'
+  host: process.env.BROKER_HOST,
+  port: process.env.BROKER_PORT,
+  username: process.env.BROKER_USER,
+  password: process.env.BROKER_PASSWORD
 });
 
 mqttClient.on("error", (err) => {
-    console.log("Error connecting to MQTT broker:", err);
     mqttClient.end();
 });
 
@@ -38,11 +43,13 @@ async function reservarBonos(fixture_id, quantity, transaction) {
     await fixture.save({ transaction });
 }
 
+
+// Endpoint para crear una nueva request
 router.post("/", async (ctx) => {
     const t = await Request.sequelize.transaction();  // Iniciar transacción
 
     try {
-        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id } = ctx.request.body;
+        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, usuarioId, status, request_id: incoming_request_id } = ctx.request.body;
 
         if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
@@ -51,21 +58,28 @@ router.post("/", async (ctx) => {
         }
 
         const clientIP = ctx.request.ip;
-        const ipResponse = await axios.get(`http://ip-api.com/json/${clientIP}`);
-        const { city, region, country } = ipResponse.data;
+        let city = "unknown", region = "unknown", country = "unknown";
+
+        try {
+            const ipResponse = await axios.get(`http://ip-api.com/json/${clientIP}`);
+            city = ipResponse.data.city || "unknown";
+            region = ipResponse.data.region || "unknown";
+            country = ipResponse.data.country || "unknown";
+        } catch (error) {
+            console.error("Error fetching location:", error);
+        }
 
         let request_id;
-
-        if (group_id == '15' && user_id && typeof request_id === 'undefined') {
-            console.log("HOLA ME LLEGO DEL GRUPO 15");
+      
+        if (group_id == '15' && usuarioId && typeof request_id === 'undefined') {
 
             // Generar un nuevo UUID para la request interna
             request_id = uuidv4();
 
-            // Reservar los bonos reduciendo la cantidad disponible
-            await reservarBonos(fixture_id, quantity, t);
+            // Reservar los bonos reduciendo la cantidad disponible LO HACE
+            await reservarBonos(fixture_id, quantity, t); 
 
-            // Crear la nueva request en la base de datos con estado 'sent'
+            // Crear la nueva request en la base de datos con estado 'sent' FUNCIONA
             const newRequest = await Request.create({
                 request_id,
                 group_id,
@@ -78,7 +92,7 @@ router.post("/", async (ctx) => {
                 datetime,
                 quantity,
                 seller: 0,  // Siempre es 0
-                user_id,
+                usuarioId,
                 status: "sent",
                 ip_address: clientIP,  // Agregar IP del cliente
                 location: `${city}, ${region}, ${country}`
@@ -109,12 +123,12 @@ router.post("/", async (ctx) => {
                     ctx.status = 500;
                     ctx.body = { message: "Failed to publish message to broker." };
                 } else {
-                    console.log('Mensaje publicado en el canal fixtures/requests:', messagePayload);
+                    console.log('Mensaje publicado en el canal fixtures/requests');
                     ctx.status = 201;
                     ctx.body = { message: "Request successfully created and message sent to broker!", request: newRequest };
                 }
             });
-
+    
         } else if (group_id !== '15') {
             // Si el group_id no es 15, manejar como ExternalRequest
             request_id = incoming_request_id;
@@ -145,8 +159,10 @@ router.post("/", async (ctx) => {
 
         } else {
             // Si el group_id es 15, pero la request ya existe o no tiene user_id
+            console.log("Request ID:", incoming_request_id);
+            console.log("Group ID:", group_id);
             ctx.status = 400;
-            ctx.body = { message: "Invalid request. Either user_id is missing, or the request already exists." };
+            ctx.body = { message: "Either user_id is missing, or the request already exists." };
         }
 
     } catch (error) {
@@ -161,8 +177,6 @@ router.post("/", async (ctx) => {
         }
     }
 });
-
-
 
 // Endpoint para obtener todas las requests
 router.get("/", async (ctx) => {
@@ -232,10 +246,11 @@ router.get("/:id", async (ctx) => {
 
 // Endpoint para manejar la validación de las requests
 router.patch("/validate", async (ctx) => {
-    let t;
-    try {
-        const { request_id, group_id, seller, valid } = ctx.request.body;
 
+    let t;
+
+    try { 
+        const { request_id, group_id, seller, valid } = ctx.request.body;
         // Start transaction
         t = await Request.sequelize.transaction();
 
@@ -268,7 +283,9 @@ router.patch("/validate", async (ctx) => {
 
         // Handle accepted requests for group 15
         if (group_id == "15" && valid) {
-            const usuario = await Usuario.findOne({ where: { id: request.user_id }, transaction: t });
+            console.log("ENtre al if de validate grupo 15")
+            const usuario = await Usuario.findOne({ where: { id: request.usuarioId }, transaction: t });
+            console.log("Usuario", usuario)
             if (!usuario) {
                 ctx.status = 404;
                 ctx.body = { error: "Usuario not found" };
@@ -277,7 +294,7 @@ router.patch("/validate", async (ctx) => {
 
             usuario.billetera -= 1000 * request.quantity;
             if (usuario.billetera < 0) {
-                ctx.status = 400;
+                ctx.status = 402;
                 ctx.body = { error: "Insufficient funds in the user's billetera." };
                 return;
             }
@@ -324,7 +341,8 @@ router.post("/history", async (ctx) => {
                 where: { id: fixtureId },
                 include: [
                     { model: Team, as: 'homeTeam' },  // Incluir el equipo local
-                    { model: Team, as: 'awayTeam' }   // Incluir el equipo visitante
+                    { model: Team, as: 'awayTeam' },   // Incluir el equipo visitante
+                    { model: Odd, as: 'odds'}
                 ]
             });
 
@@ -357,7 +375,7 @@ router.post("/history", async (ctx) => {
                     const expectedResult = request.result; // El resultado que apostaron (nombre del equipo)
 
                     // Verifica si el resultado esperado coincide con el resultado real
-                    const hasWon = (expectedResult === winningTeam || (expectedResult === "---" && winningTeam === "---"));
+                    const hasWon = (expectedResult == winningTeam || (expectedResult == "---" && winningTeam == "---"));
 
                     // Cambiar el estado de la request
                     const newStatus = hasWon ? "won" : "lost";
@@ -365,24 +383,26 @@ router.post("/history", async (ctx) => {
 
                     // Si ganó la apuesta, actualizar la billetera del usuario
                     if (hasWon) {
-                        const usuario = await Usuario.findOne({ where: { id: request.user_id } });
+                        const usuario = await Usuario.findOne({ where: { id: request.usuarioId } });
                         if (usuario) {
                             // Obtener los odds desde la fixture
-                            const oddsArray = dbFixture.odds.find(odd => odd.name === "Match Winner");
-                            const odds = oddsArray ? oddsArray.values : [];
+                            const oddsArray = dbFixture.odds || [];
+                            const oddsMatchWinner = oddsArray.find(odd => odd.dataValues.name === "Match Winner");
+                            const odds = oddsMatchWinner ? oddsMatchWinner.dataValues : null;
 
                             // Determinar el odd correspondiente al resultado
                             let winningOdd = null;
                             if (winningTeam === dbFixture.homeTeam.name) {
-                                winningOdd = odds.find(odd => odd.value === "Home");
+                                winningOdd = odds ? oddsArray.find(odd => odd.dataValues.value === "Home") : null;
                             } else if (winningTeam === dbFixture.awayTeam.name) {
-                                winningOdd = odds.find(odd => odd.value === "Away");
+                                winningOdd = odds ? oddsArray.find(odd => odd.dataValues.value === "Away") : null;
                             } else if (winningTeam === "---") {
-                                winningOdd = odds.find(odd => odd.value === "Draw");
+                                winningOdd = odds ? oddsArray.find(odd => odd.dataValues.value === "Draw") : null;
                             }
 
                             if (winningOdd) {
-                                const winnings = 100 * request.quantity * parseFloat(winningOdd.odd); // Calcular las ganancias
+                                const winnings = 1000 * request.quantity * parseFloat(winningOdd.odd); // Calcular las ganancias
+                                console.log("AGREGANDO PLATA A LA BILLETERA")
                                 usuario.billetera += winnings; // Agregar ganancias a la billetera
                                 await usuario.save(); // Guardar los cambios en la billetera
                             }
@@ -401,6 +421,30 @@ router.post("/history", async (ctx) => {
     ctx.body = { message: "History processed successfully." };
 });
 
-
+router.get('/bond', async (ctx) => {
+    try {
+      const fixtures = await Fixtures.findAll(); // Assuming you're using Sequelize or similar ORM
+  
+      // Extract the relevant data
+      const data = fixtures.map(fixture => ({
+        fixture_id: fixture.id, // Assuming 'id' is the fixture ID field
+        bonos_disponibles: fixture.bonos_disponibles // Assuming 'bonos_disponibles' is a field in the fixture
+      }));
+  
+      // Return the data as JSON
+      ctx.body = {
+        success: true,
+        data: data
+      };
+    } catch (error) {
+      // Handle any errors
+      ctx.status = 500;
+      ctx.body = {
+        success: false,
+        message: 'Failed to fetch fixtures',
+        error: error.message
+      };
+    }
+  });
 
 module.exports = router;

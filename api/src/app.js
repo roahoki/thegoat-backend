@@ -4,12 +4,16 @@ const KoaLogger = require('koa-logger');
 const bodyParser = require('koa-bodyparser');
 const router = require('./routes.js');
 const orm = require('./models');
+const cors = require('@koa/cors');
 
 const app = new Koa();
 
 app.context.orm = orm;
 
 app.use(KoaLogger());
+
+// Usar cors middleware
+app.use(cors());
 
 // Use bodyParser middleware
 app.use(bodyParser());
