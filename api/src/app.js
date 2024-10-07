@@ -4,7 +4,7 @@ const KoaLogger = require('koa-logger');
 const bodyParser = require('koa-bodyparser');
 const router = require('./routes.js');
 const orm = require('./models');
-const cors = require('@koa/cors');
+// const cors = require('@koa/cors'); // manejo desde la api gateway
 
 const app = new Koa();
 
@@ -13,7 +13,7 @@ app.context.orm = orm;
 app.use(KoaLogger());
 
 // Usar cors middleware
-app.use(cors());
+// app.use(cors()); // manejo desde la api gateway
 
 // Use bodyParser middleware
 app.use(bodyParser());
