@@ -48,7 +48,8 @@ router.get('/:id', async (ctx) => {
 
 router.get('/wallet/:id', async (ctx) => {
   const { id } = ctx.params;
-  const authHeader = ctx.headers['Authorization'];
+  const authHeader = ctx.headers['authorization'];
+  console.log("headers", ctx.headers)
   console.log("id", id)
   console.log("header", authHeader)
 
