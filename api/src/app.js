@@ -12,8 +12,12 @@ app.context.orm = orm;
 
 app.use(KoaLogger());
 
-// Usar cors middleware
-app.use(cors());
+// Usar cors middleware con opciones específicas
+app.use(cors({
+  origin: 'https://web.thegoatbet.me',
+  allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Use bodyParser middleware
 app.use(bodyParser());
@@ -26,3 +30,4 @@ app.use(async (ctx) => {
 });
 
 module.exports = app;
+
