@@ -49,6 +49,8 @@ router.get('/:id', async (ctx) => {
 router.get('/wallet/:id', async (ctx) => {
   const { id } = ctx.params;
   const authHeader = ctx.headers['authorization'];
+  console.log("id", id)
+  console.log("header", authHeader)
 
   if (!authHeader) {
     ctx.status = 401;
