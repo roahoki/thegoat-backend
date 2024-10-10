@@ -23,7 +23,7 @@ app.use(async (ctx) => {
 });
 
 app.use(async (ctx, next) => {
-  ctx.set('Access-Control-Allow-Origin', ['https://web.thegoatbet.me', 'http://locahost:5173']);
+  ctx.set('Access-Control-Allow-Origin', 'https://web.thegoatbet.me');
   ctx.set('Access-Control-Allow-Credentials', 'true');
   ctx.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
