@@ -135,11 +135,11 @@ router.post("/", async (ctx) => {
             if (!wallet) {
                 try {
                 const webpayResponse = await axios.post(`${process.env.BACKEND_URL}/webpay/create`, {
-                    requestId: newRequest.request_id,
+                    request_id: newRequest.request_id,
                     quantity: newRequest.quantity
                 });
 
-                console.log(requestId, quantity, "enviando")
+                console.log(request_id, quantity, "enviando")
         
                 // Devuelve la URL de Webpay al frontend
                 ctx.body = { token: webpayResponse.data.token, url: webpayResponse.data.url };
@@ -151,7 +151,7 @@ router.post("/", async (ctx) => {
                 }
             } else {
                 // Si es wallet, no hacer Webpay
-                ctx.body = { message: "Request created and paid with wallet.", requestId: newRequest.request_id };
+                ctx.body = { message: "Request created and paid with wallet.", request_id: newRequest.request_id };
                 ctx.status = 201;
             }
     
