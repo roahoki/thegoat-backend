@@ -15,19 +15,20 @@ app.use(KoaLogger());
 // Use bodyParser middleware
 app.use(bodyParser());
 
+
+app.use(async (ctx, next) => {
+  ctx.set('Access-Control-Allow-Origin', 'http://localhost:5173');
+  ctx.set('Access-Control-Allow-Credentials', 'true');
+  ctx.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  await next();
+});
+
 app.use(router.routes());
 
 // Handle unmatched routes
 app.use(async (ctx) => {
   ctx.body = "Endpoint no habilitado";
-});
-
-app.use(async (ctx, next) => {
-  ctx.set('Access-Control-Allow-Origin', 'https://web.thegoatbet.me');
-  ctx.set('Access-Control-Allow-Credentials', 'true');
-  ctx.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  await next();
 });
 
 module.exports = app;
