@@ -1,6 +1,23 @@
 const Router = require("koa-router");
 const { tx } = require('../config/webpayConfig'); 
 const { Request } = require('../models');
+const mqtt = require('mqtt');
+const dotenv = require('dotenv');
+
+// Cargar variables de entorno desde el archivo .env
+dotenv.config();
+
+// Configuración de conexión MQTT
+const mqttClient = mqtt.connect({
+  host: process.env.BROKER_HOST,
+  port: process.env.BROKER_PORT,
+  username: process.env.BROKER_USER,
+  password: process.env.BROKER_PASSWORD
+});
+
+mqttClient.on("error", (err) => {
+    mqttClient.end();
+});
 
 const trxRouter = new Router();
 
@@ -51,56 +68,85 @@ trxRouter.post('/create', async (ctx) => {
 });
 
 
+
 trxRouter.post('/commit', async (ctx) => {
   const { token } = ctx.request.body;
-  if (!token || token === "") {
-      ctx.body = {
-          message: "Transacción anulada por el usuario"
+
+  if (!token) {
+    // Si no hay token_ws, buscar la request con el estado pendiente y sin token
+    const request = await Request.findOne({ 
+      where: { 
+        status: 'pending', 
+        deposit_token: "" 
+      } 
+    });
+
+    if (request) {
+      await request.update({ status: "rejected" });
+
+      // Publicar en el canal de validación
+      const validationPayload = {
+        request_id: request.request_id,
+        group_id: request.group_id,
+        seller: 0,
+        valid: false
       };
+
+      mqttClient.publish('fixtures/validation', JSON.stringify(validationPayload));
+
+      ctx.body = { message: "Transacción anulada correctamente", request };
       ctx.status = 200;
-      return;
+    } else {
+      ctx.body = { message: "No se encontró ninguna request pendiente." };
+      ctx.status = 404;
+    }
+    return;
   }
 
   try {
-      // Confirmar la transacción con Webpay usando el token
-      const confirmedTx = await tx.commit(token);  // 'tx' es la instancia de Webpay
+    // Confirmar la transacción usando el token
+    const confirmedTx = await tx.commit(token);
 
-      if (confirmedTx.response_code !== 0) {  // Rechaza la compra si el código de respuesta es distinto de 0
-          const trx = await Request.update({
-              status: "rejected"  // Cambia el estado de la request a 'rejected'
-          }, {
-              where: { deposit_token: token },
-              returning: true,
-              plain: true,
-          });
+    if (confirmedTx.response_code !== 0) {
+      // Actualizar la request a rechazada
+      const trx = await Request.update({ status: "rejected" }, { where: { deposit_token: token }, returning: true, plain: true });
 
-          ctx.body = {
-              message: "Transacción ha sido rechazada",
-              request: trx
-          };
-          ctx.status = 200;
-      } else {
-          // Si la transacción es exitosa, actualiza el estado de la request a 'completed'
-          const trx = await Request.update({
-              status: "completed"
-          }, {
-              where: { deposit_token: token },
-              returning: true,
-              plain: true,
-          });
+      // Publicar el rechazo en el canal de validación
+      const validationPayload = {
+        request_id: trx.request_id,
+        group_id: trx.group_id,
+        seller: 0,
+        valid: false
+      };
 
-          ctx.body = {
-              message: "Transacción ha sido aceptada",
-              request: trx
-          };
-          ctx.status = 200;
-      }
+      mqttClient.publish('fixtures/validation', JSON.stringify(validationPayload));
+
+      ctx.body = { message: "Transacción rechazada", request: trx };
+      ctx.status = 200;
+    } else {
+      // Actualizar la request a completada
+      const trx = await Request.update({ status: "completed" }, { where: { deposit_token: token }, returning: true, plain: true });
+
+      // Publicar la aceptación en el canal de validación
+      const validationPayload = {
+        request_id: trx.request_id,
+        group_id: trx.group_id,
+        seller: 0,
+        valid: true
+      };
+
+      mqttClient.publish('fixtures/validation', JSON.stringify(validationPayload));
+
+      ctx.body = { message: "Transacción aceptada", request: trx };
+      ctx.status = 200;
+    }
   } catch (error) {
-      console.error('Error committing transaction:', error);
-      ctx.status = 500;
-      ctx.body = { message: "Error processing the transaction" };
+    console.error('Error confirming transaction:', error);
+    ctx.status = 500;
+    ctx.body = { message: "Error procesando la transacción" };
   }
 });
+
 
 
 module.exports = trxRouter;

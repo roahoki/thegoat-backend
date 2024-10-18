@@ -275,16 +275,17 @@ router.patch("/validate", async (ctx) => {
 
     let t;
 
-    try { 
+    try {
         const { request_id, group_id, seller, valid } = ctx.request.body;
 
         t = await Request.sequelize.transaction();
 
         const requestModel = group_id == "15" ? Request : ExternalRequest;
 
+        // Busca la request correspondiente (interna o externa)
         const request = await requestModel.findOne({ where: { request_id }, transaction: t });
         if (!request) {
-            await t.rollback(); // Asegurar rollback antes de retornar
+            await t.rollback();
             ctx.status = 404;
             ctx.body = { error: `${group_id == '15' ? 'Request' : 'External Request'} not found` };
             return;
@@ -292,7 +293,7 @@ router.patch("/validate", async (ctx) => {
 
         const fixture = await Fixture.findOne({ where: { id: request.fixture_id }, transaction: t });
         if (!fixture) {
-            await t.rollback(); // Asegurar rollback antes de retornar
+            await t.rollback();
             ctx.status = 404;
             ctx.body = "Fixture not found";
             return;
@@ -300,13 +301,14 @@ router.patch("/validate", async (ctx) => {
 
         const newStatus = valid ? "accepted" : "rejected";
 
+        // Si la request es rechazada, se devuelven los bonos disponibles al fixture
         if (!valid) {
             fixture.bonos_disponibles += request.quantity;
             await fixture.save({ transaction: t });
         }
 
-        // Manejar requests aceptadas para el grupo 15
-        if (group_id == "15" && valid) {
+        // Manejar requests aceptadas o rechazadas para el grupo 15
+        if (group_id == "15") {
             const usuario = await Usuario.findOne({ where: { id: request.usuarioId }, transaction: t });
             if (!usuario) {
                 await t.rollback(); // Asegurar rollback antes de retornar
@@ -315,18 +317,29 @@ router.patch("/validate", async (ctx) => {
                 return;
             }
 
-            usuario.billetera -= 1000 * request.quantity;
-            if (usuario.billetera < 0) {
-                await t.rollback(); // Asegurar rollback antes de retornar
-                ctx.status = 402;
-                ctx.body = { error: "Insufficient funds in the user's billetera." };
-                return;
+            // Solo manejar la billetera si es wallet (true)
+            if (request.wallet) {
+                // Si es wallet (true), descontar si se acepta y manejar fondo insuficiente
+                if (valid) {
+                    usuario.billetera -= 1000 * request.quantity;
+                    if (usuario.billetera < 0) {
+                        await t.rollback(); // Asegurar rollback antes de retornar
+                        ctx.status = 402;
+                        ctx.body = { error: "Insufficient funds in the user's billetera." };
+                        return;
+                    }
+                    await usuario.save({ transaction: t });
+                } else {
+                    // Si la transacción con wallet fue rechazada, no ajustar billetera
+                    console.log("Wallet payment rejected, no balance changes.");
+                }
+            } else {
+                // Si es Webpay (wallet = false), no hacer nada con la billetera
+                console.log("Webpay payment, no changes to billetera.");
             }
-
-            await usuario.save({ transaction: t });
         }
 
-        // Actualizar el estado de la request
+        // Actualizar el estado de la request, independientemente de si es wallet o Webpay
         await request.update({ status: newStatus }, { transaction: t });
 
         // Hacer commit de la transacción
