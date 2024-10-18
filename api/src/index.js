@@ -15,7 +15,7 @@ db.sequelize
     if (err) {
       return console.error('Error starting the server: ', err);
     }
-    console.log(`Server is running on http://localhost:${PORT}`);
+    // console.log(f`Server is running on as ${API_URL}`);
     return app;
     });
 })

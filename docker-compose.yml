@@ -1,4 +1,14 @@
 services:
+  listener:
+    build: ./listener
+    depends_on:
+      - api
+    networks:
+      - app-network
+    restart: always
+    env_file:
+      - ./.env
+
   api:
     build: ./api
     ports:
@@ -16,13 +26,6 @@ services:
       - ./api:/app
       - /app/node_modules
     command: yarn start
-  listener:
-    build: ./listener
-    depends_on:
-      - api
-    networks:
-      - app-network
-    restart: always
   linter:
     build: ./api
     command: yarn lint
@@ -33,6 +36,7 @@ services:
       - api
     networks:
       - app-network
+
   db:
     image: postgres:15
     environment:

@@ -5,7 +5,7 @@ module.exports = (sequelize, DataTypes) => {
   class Usuario extends Model {
     static associate(models) {
       Usuario.hasMany(models.Request, {
-        foreignKey: 'usuarioId', // Corrected foreign key
+        foreignKey: 'usuarioId', // Foreign key
         as: 'requests'            // Pluralized 'request' to 'requests'
       });
     }
@@ -39,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
       name: {
         type: DataTypes.STRING,
         allowNull: false,
-      },
+      }
     },
     {
       sequelize,
@@ -50,3 +50,4 @@ module.exports = (sequelize, DataTypes) => {
 
   return Usuario;
 };
+

@@ -10,7 +10,6 @@ router.post("/update", async (ctx) => {
         const fixturesData = ctx.request.body.fixtures;
 
         // Log para verificar la estructura recibida
-        console.log('Received data:', ctx.request.body);
 
         if (!fixturesData || !Array.isArray(fixturesData)) {
             ctx.status = 400;
@@ -105,7 +104,7 @@ router.post("/update", async (ctx) => {
 
 router.get("/data", async (ctx) => {
     const { page = 1, count = 25, home, visit, date } = ctx.query;
-    console.log('Query Values: ', ctx.query);
+
 
     // Get today's date in UTC format
     const today = new Date().toISOString().split('T')[0];
@@ -139,7 +138,7 @@ router.get("/data", async (ctx) => {
         const homeTeam = await Team.findOne({ where: { name: home } });
         if (homeTeam) {
             where.home_team_id = homeTeam.id;
-            console.log('Home Team ID: ', homeTeam.id);
+
         } else {
             ctx.status = 404;
             ctx.body = { error: `Home team '${home}' not found` };
@@ -152,7 +151,7 @@ router.get("/data", async (ctx) => {
         const awayTeam = await Team.findOne({ where: { name: visit } });
         if (awayTeam) {
             where.away_team_id = awayTeam.id;
-            console.log('Away Team ID: ', awayTeam.id);
+
         } else {
             ctx.status = 404;
             ctx.body = { error: `Away team '${visit}' not found` };
@@ -203,9 +202,6 @@ router.get("/data", async (ctx) => {
 });
 
 
-
-
-
 router.get("/data/:id", async (ctx) => {
     const { id } = ctx.params;
 
@@ -226,14 +222,5 @@ router.get("/data/:id", async (ctx) => {
 
     ctx.body = fixture;
 });
-
-
-
-
-
-
-
-
-
 
 module.exports = router;
