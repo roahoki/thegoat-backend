@@ -7,7 +7,6 @@ const axios = require('axios');
 const fs = require('fs');
 const dotenv = require('dotenv');
 const moment = require('moment');
-const db = require("../models");
 
 // Cargar variables de entorno desde el archivo .env
 dotenv.config();
@@ -46,14 +45,15 @@ async function reservarBonos(fixture_id, quantity, transaction) {
 
 // Endpoint para crear una nueva request
 router.post("/", async (ctx) => {
-    const t = await Request.sequelize.transaction();  // Iniciar transacción
+    const t = await Request.sequelize.transaction();
 
     try {
-        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, usuarioId, status, request_id: incoming_request_id } = ctx.request.body;
+        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, usuarioId, status, request_id: incoming_request_id, wallet } = ctx.request.body;
 
-        if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof quantity !== 'number' || quantity <= 0) {
+        if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof wallet !== 'boolean' || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
             ctx.body = { message: "Invalid request format." };
+            await t.commit();
             return;
         }
 
@@ -92,6 +92,7 @@ router.post("/", async (ctx) => {
                 datetime,
                 quantity,
                 seller: 0,  // Siempre es 0
+                wallet,
                 usuarioId,
                 status: "sent",
                 ip_address: clientIP,  // Agregar IP del cliente
@@ -110,10 +111,11 @@ router.post("/", async (ctx) => {
                 round,
                 date,
                 result,
-                deposit_token: "",  // Siempre vacío
+                deposit_token: deposit_token || "",
                 datetime,
                 quantity,
-                seller: 0
+                seller: 0,
+                wallet
             };
 
             // Publicar el mensaje en el canal fixtures/requests
@@ -128,6 +130,30 @@ router.post("/", async (ctx) => {
                     ctx.body = { message: "Request successfully created and message sent to broker!", request: newRequest };
                 }
             });
+
+            // Si es Webpay, manejar el flujo de Webpay
+            if (!wallet) {
+                try {
+                const webpayResponse = await axios.post(`${process.env.BACKEND_URL}/webpay/create`, {
+                    request_id: newRequest.request_id,
+                    quantity: newRequest.quantity
+                });
+
+                console.log(request_id, quantity, "enviando")
+        
+                // Devuelve la URL de Webpay al frontend
+                ctx.body = { token: webpayResponse.data.token, url: webpayResponse.data.url };
+                ctx.status = 201;
+                } catch (error) {
+                console.error('Error initiating Webpay transaction:', error);
+                ctx.status = 500;
+                ctx.body = { message: "Error initiating Webpay transaction." };
+                }
+            } else {
+                // Si es wallet, no hacer Webpay
+                ctx.body = { message: "Request created and paid with wallet.", request_id: newRequest.request_id };
+                ctx.status = 201;
+            }
     
         } else if (group_id !== '15') {
             // Si el group_id no es 15, manejar como ExternalRequest
@@ -244,30 +270,30 @@ router.get("/:id", async (ctx) => {
     }
 });
 
-// Endpoint para manejar la validación de las requests
+
 router.patch("/validate", async (ctx) => {
 
     let t;
 
-    try { 
+    try {
         const { request_id, group_id, seller, valid } = ctx.request.body;
-        // Start transaction
+
         t = await Request.sequelize.transaction();
 
-        // Determine which model to use
         const requestModel = group_id == "15" ? Request : ExternalRequest;
 
-        // Find the request
+        // Busca la request correspondiente (interna o externa)
         const request = await requestModel.findOne({ where: { request_id }, transaction: t });
         if (!request) {
+            await t.rollback();
             ctx.status = 404;
             ctx.body = { error: `${group_id == '15' ? 'Request' : 'External Request'} not found` };
             return;
         }
 
-        // Find the associated fixture
         const fixture = await Fixture.findOne({ where: { id: request.fixture_id }, transaction: t });
         if (!fixture) {
+            await t.rollback();
             ctx.status = 404;
             ctx.body = "Fixture not found";
             return;
@@ -275,37 +301,48 @@ router.patch("/validate", async (ctx) => {
 
         const newStatus = valid ? "accepted" : "rejected";
 
-        // Handle rejected requests
+        // Si la request es rechazada, se devuelven los bonos disponibles al fixture
         if (!valid) {
             fixture.bonos_disponibles += request.quantity;
             await fixture.save({ transaction: t });
         }
 
-        // Handle accepted requests for group 15
-        if (group_id == "15" && valid) {
-            console.log("ENtre al if de validate grupo 15")
+        // Manejar requests aceptadas o rechazadas para el grupo 15
+        if (group_id == "15") {
             const usuario = await Usuario.findOne({ where: { id: request.usuarioId }, transaction: t });
-            console.log("Usuario", usuario)
             if (!usuario) {
+                await t.rollback(); // Asegurar rollback antes de retornar
                 ctx.status = 404;
                 ctx.body = { error: "Usuario not found" };
                 return;
             }
 
-            usuario.billetera -= 1000 * request.quantity;
-            if (usuario.billetera < 0) {
-                ctx.status = 402;
-                ctx.body = { error: "Insufficient funds in the user's billetera." };
-                return;
+            // Solo manejar la billetera si es wallet (true)
+            if (request.wallet) {
+                // Si es wallet (true), descontar si se acepta y manejar fondo insuficiente
+                if (valid) {
+                    usuario.billetera -= 1000 * request.quantity;
+                    if (usuario.billetera < 0) {
+                        await t.rollback(); // Asegurar rollback antes de retornar
+                        ctx.status = 402;
+                        ctx.body = { error: "Insufficient funds in the user's billetera." };
+                        return;
+                    }
+                    await usuario.save({ transaction: t });
+                } else {
+                    // Si la transacción con wallet fue rechazada, no ajustar billetera
+                    console.log("Wallet payment rejected, no balance changes.");
+                }
+            } else {
+                // Si es Webpay (wallet = false), no hacer nada con la billetera
+                console.log("Webpay payment, no changes to billetera.");
             }
-
-            await usuario.save({ transaction: t });
         }
 
-        // Update request status
+        // Actualizar el estado de la request, independientemente de si es wallet o Webpay
         await request.update({ status: newStatus }, { transaction: t });
 
-        // Commit transaction
+        // Hacer commit de la transacción
         await t.commit();
 
         ctx.status = 200;
@@ -313,15 +350,15 @@ router.patch("/validate", async (ctx) => {
 
     } catch (error) {
         console.error("Error validating request:", error);
+
+        // Hacer rollback en caso de error
+        if (t) await t.rollback();
+        
         ctx.status = 500;
         ctx.body = { message: "An error occurred while validating the request." };
-    } finally {
-        // Ensure transaction is rolled back if it wasn't committed
-        if (t && !t.finished) {
-            await t.rollback();
-        }
     }
 });
+
 
 // Endpoint para manejar el mensaje del canal history
 router.post("/history", async (ctx) => {

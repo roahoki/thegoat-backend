@@ -117,6 +117,7 @@ router.get('/:id/requests', async (ctx) => {
   }
 
   try {
+    console.log('id', id);
     const requests = await Request.findAll({
       where: { usuarioId: id },
     });
