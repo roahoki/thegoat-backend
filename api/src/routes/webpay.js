@@ -45,7 +45,7 @@ trxRouter.post('/create', async (ctx) => {
       request.request_id.slice(0, 26),  // ID de la transacción en Webpay
       "test-iic2173",  // Nombre del comercio (para ambiente de prueba usa "test-iic2173")
       amount,  // Monto total
-      process.env.REDIRECT_URL || 'http://localhost:5173/completed-purchaseeee'  // URL de retorno (donde Webpay redirige después del pago)
+      process.env.REDIRECT_URL  // URL de retorno (donde Webpay redirige después del pago)
     );
 
     // Actualiza la request con el token de WebPay
@@ -71,14 +71,11 @@ trxRouter.post('/create', async (ctx) => {
 
 trxRouter.post('/commit', async (ctx) => {
   const { token } = ctx.request.body;
+  console.log(token, "toooken");
 
   if (!token) {
-    // Si no hay token_ws, buscar la request con el estado pendiente y sin token
     const request = await Request.findOne({ 
-      where: { 
-        status: 'pending', 
-        deposit_token: "" 
-      } 
+      where: { status: 'pending payment' }
     });
 
     if (request) {
@@ -109,7 +106,16 @@ trxRouter.post('/commit', async (ctx) => {
 
     if (confirmedTx.response_code !== 0) {
       // Actualizar la request a rechazada
-      const trx = await Request.update({ status: "rejected" }, { where: { deposit_token: token }, returning: true, plain: true });
+      await Request.update({ status: "rejected" }, { where: { deposit_token: token } });
+
+      // Buscar la request actualizada para obtener los campos necesarios
+      const trx = await Request.findOne({ where: { deposit_token: token } });
+
+      if (!trx) {
+        ctx.status = 404;
+        ctx.body = { message: "Request no encontrada después de la actualización." };
+        return;
+      }
 
       // Publicar el rechazo en el canal de validación
       const validationPayload = {
@@ -125,9 +131,18 @@ trxRouter.post('/commit', async (ctx) => {
       ctx.status = 200;
     } else {
       // Actualizar la request a completada
-      const trx = await Request.update({ status: "completed" }, { where: { deposit_token: token }, returning: true, plain: true });
+      await Request.update({ status: "accepted" }, { where: { deposit_token: token } });
 
-      // Publicar la aceptación en el canal de validación
+      // Buscar la request actualizada para obtener los campos necesarios
+      const trx = await Request.findOne({ where: { deposit_token: token } });
+
+      if (!trx) {
+        ctx.status = 404;
+        ctx.body = { message: "Request no encontrada después de la actualización." };
+        return;
+      }
+
+      // Publicar la aceptación en el canal fixtures/validation
       const validationPayload = {
         request_id: trx.request_id,
         group_id: trx.group_id,
