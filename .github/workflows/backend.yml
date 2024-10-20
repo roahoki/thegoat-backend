@@ -33,14 +33,22 @@ jobs:
           registry-type: public
           mask-password: "true"
 
-      - name: Build, tag, and push docker image to Amazon ECR Public
+      - name: Build, tag, and push API image to Amazon ECR Public
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
           REGISTRY_ALIAS: h8q2k9k3
           REPOSITORY: thegoat-backend
-          IMAGE_TAG: latest
         run: |
           cd api
-          docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG .
-          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+          docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:api-latest .
+          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:api-latest
 
+      - name: Build, tag, and push Listener image to Amazon ECR Public
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: h8q2k9k3
+          REPOSITORY: thegoat-backend
+        run: |
+          cd ../listener
+          docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:listener-latest .
+          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:listener-latest
