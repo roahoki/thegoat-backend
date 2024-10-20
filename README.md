@@ -1,67 +1,52 @@
-# Entrega 1: The goat bet 🐐⚽📊💸
-
-## Requisitos Funcionales
-- RF01 ES: Registro/Sign Up
-
-- RF02 ES: Los usuarios pueden visualizar los partidos
-
-- RF06 ES: Al comprar bono se envía solicitud a `fixtures/requests`, se espera la respuesta y se escucha en `fixtures/validation`
-
-- RF07 ES: Debemos estar escuchando los canales `fixtures/requests`, `fixtures/validation` y `fixtures/history`
-
-- RF08 ES: Gestión correcta de la disponibilidad de bonos
-
-- RF09 ES: Usuario puede agregar dinero a su billetera
-
-- RF10 ES: Usuario compra un bono disponible, se valida que tenga dinero y se descuenta de su billetera cuando se efectua la compra
-
-- RF11 ES: Usuario acierta en su predicción, entonces recibe 1000*odd del bono a su billetera
-
---- RF03: Ver detalles de cada partido + cantidad de bonos dispo + poder comprar 
-
---- RF04: Al comprar, obtener ubicación de usuario mediante IP
-
---- RF05: Usuario puede ver sus solicitudes (bonos comprados y en proceso)
-
-
-## Requisitos No Funcionales
-
-- RNF01 ES: Separación backend y frontend
-
-- RNF02 ES: Listener y Api son contenedores distintos, coordinación mediante docker compose
-
-- RNF03 ES: Configuración correcta de budget alerts en la cuenta de aws
-
-- RNF04 ES: API debe estar detrás de una AWS API gateway, se debe asociar a un subdominio y debe tener CORS configurado correctamente.
-
-- RNF05 ES: Backend y Frontend con HTTPS
-
-- RNF06 ES: Implementación de servicio de autenticación IDEAL OAuth
-
-RNF07: Frontend desplegado en S3 con distribución en Cloudfront
-
-RNF08: API Gateway debe poder usar servicio de autenticación antes de enviar request a la API. Dentro de API Gateway deben crearle un Custom Authorizer si usan tipo REST para poder autenticar sus requests previos a mandarlos a su API.
-
-RNF09: Implementar un pipeline de CI, CircleCI. Implementación de linter que revise el código
-
-RNF09 BONUS: Implementar un build simple que resuelva un test trivial que pueda fallar para el backend
-
-RNF09 BONUS: Implementar un pipeline CI para frontend con un linter y hacer uso de revisiones de performance de lighthouse 
-
-## Documentación
-
-Todo en la carpeta docs
-
---- RDOC01 (3 ptos): Deben crear un diagrama UML de componentes de la entrega, con explicaciones y
-detalle sobre el sistema. Esto deben tenerlo para la fecha final de entrega.
-
---- RDOC02 (2 ptos): Deben documentar los pasos necesarios para replicar el pipe CI que usaron en su
-aplicación (Qué pasos sigue si CI).
-
---- RDOC03 (1 ptos): Deben dejar una documentación de alguna forma de correr su aplicación en un
-ambiente local para propósitos de testeo (que instalar, que poner en el .env, como correr la app, etc).
-
 # DOCUMENTACIÓN
+
+## Como correr el código
+
+### LOCAL
+
+1. Crear .env en la raíz del proyecto
+```
+DB_USERNAME=postgres
+DB_PASSWORD=password
+DB_NAME=mydatabase
+DB_HOST=db
+#DB_HOST=localhost
+PORT=3000
+BROKER_HOST=broker.iic2173.org
+BROKER_PORT = 9000
+BROKER_USER=students
+BROKER_PASSWORD=iic2173-2024-2-students
+API_URL=http://api:3000
+BACKEND_URL=http://localhost:3000
+REDIRECT_URL=http://localhost:5173/purchase-completed
+
+MQTT_HOST = broker.iic2173.org
+MQTT_PORT = 9000
+MQTT_USER = students
+MQTT_PASSWORD = iic2173-2024-2-students
+MQTT_PROTOCOL = mqtt
+```
+
+2. Bajar contenedores de docker si están arriba: 
+```
+docker compose down
+```
+
+3. Subir contenedores de docker (corre automáticamente las migraciones pendientes):
+```
+docker compose up --build -d
+```
+
+El backend debería estar visible en http://localhost:3000. 
+
+4. Para ver los logs:
+```
+docker compose logs -f
+```
+
+### AWS
+
+
 
 ## REQUESTS
 Modelos:
@@ -200,3 +185,72 @@ result
     }
 }
 ```
+
+## WEBPAY
+
+No agrega modelos nuevos, solo atributo wallet a Request y ExternalRequest. Cuando wallet=true, pago fue con billetera, cuando wallet=false, fue con webpay. 
+
+Endpoints:
+
+1. #### POST /webpay/create
+
+Este endpoint se encarga de iniciar una transacción en Webpay para una solicitud específica. La request está asociada a un request_id, que identifica la transacción en la base de datos. Es llamado desde la api, en POST /requests, cuando la request es por webpay. 
+
+Funcionalidad:
+
+1. Busca la request asociada en la base de datos utilizando el request_id.
+2. Calcula el monto total multiplicando la cantidad por el valor unitario ($1000).
+3. Inicia la transacción en Webpay utilizando el método tx.create() con el request_id, el nombre del comercio, el monto y la URL de retorno (definida en process.env.REDIRECT_URL). 
+4. Actualiza la request con el token de Webpay y cambia su estado a pending payment.
+5. Devuelve al frontend la URL de Webpay y el token de la transacción para redirigir al usuario al portal de pago.
+
+Body:
+
+```json
+{
+  "request_id": "uuid",  // ID de la solicitud
+  "quantity": 2  // Cantidad de bonos
+}
+```
+
+Respuesta:
+
+- 201 Created: La transacción fue iniciada correctamente, se devuelve la URL de Webpay y el token.
+- 404 Not Found: Si no se encuentra la request en la base de datos.
+- 500 Internal Server Error: Si ocurre algún error al iniciar la transacción en Webpay.
+
+
+2. #### POST /webpay/commit
+
+Este endpoint se encarga de confirmar la transacción en Webpay después de que el usuario haya completado (o cancelado) el proceso de pago. Es llamado desde el frontend en la página de redirección (PurchaseCompleted), cuando el usuario termina de realizar el pago por webpay, para confirmar si se realizó o no. 
+
+Funcionalidad:
+
+1. Si el token no está presente (indicando que el usuario canceló la transacción), busca una request con estado pending payment y sin deposit_token, y la marca como rejected.
+2. Si el token está presente, confirma la transacción con Webpay utilizando el método tx.commit().
+3. Dependiendo de la respuesta de Webpay (response_code), la request se actualiza a rejected (si la transacción fue rechazada) o accepted (si fue exitosa).
+4. En ambos casos, publica el resultado en el canal MQTT fixtures/validation para informar a otros grupos sobre el estado de la transacción.
+Mensaje que publica:
+
+```json
+{
+  "request_id": "uuid",  // ID de la solicitud
+  "group_id": "15",  // Grupo al que pertenece la solicitud
+  "seller": 0,  // Siempre 0
+  "valid": true  // true si fue aceptada, false si fue rechazada
+}
+```
+
+Body:
+
+```json
+{
+  "token": "webpay-token"  // Token de Webpay que se recibe después del pago
+}
+```
+
+Respuesta:
+
+- 200 OK: La transacción fue procesada correctamente, ya sea aceptada o rechazada.
+- 404 Not Found: Si no se encuentra la request asociada al token después de actualizarla.
+- 500 Internal Server Error: Si ocurre un error durante la confirmación de la transacción.
