@@ -49,6 +49,6 @@ jobs:
           REGISTRY_ALIAS: h8q2k9k3
           REPOSITORY: thegoat-backend
         run: |
-          cd ../listener
+          cd listener
           docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:listener-latest .
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:listener-latest
