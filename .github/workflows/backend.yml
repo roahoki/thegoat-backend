@@ -52,3 +52,46 @@ jobs:
           cd listener
           docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:listener-latest .
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:listener-latest
+
+  deploy-to-ec2:
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr-public
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
+          mask-password: "true"      
+
+      - name: Zip artifact to deploy
+        run: |
+          zip -r deploy.zip docker-compose.yml scripts appspec.yml
+
+      - name: Copy Zip to S3
+        run: |
+          aws s3 cp deploy.zip s3://thegoatbet/deploy.zip
+      
+      - name: Create CodeDeploy Deployment
+        id: create-deployment-trigger
+        run: |
+          deploymentId=$(aws deploy create-deployment --application-name Thegoat-app \
+          --deployment-group-name group-thegoat --region us-east-2 \
+          --s3-location bucket=thegoatbet,key=deploy.zip,bundleType=zip \
+          --description "Automatic deployment from githubactions commit ${{github.sha}}" | jq -r '.deploymentId')
+          echo "DeploymentId=$deploymentId" >> $GITHUB_OUTPUT
+    
+      - name: Wait for deployment to finish
+        run: |
+          aws deploy wait deployment-successful --deployment-id ${{ steps.create-deployment-trigger.outputs.deploymentId }} --region us-east-2
+    
