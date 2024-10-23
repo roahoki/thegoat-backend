@@ -254,3 +254,28 @@ Respuesta:
 - 200 OK: La transacción fue procesada correctamente, ya sea aceptada o rechazada.
 - 404 Not Found: Si no se encuentra la request asociada al token después de actualizarla.
 - 500 Internal Server Error: Si ocurre un error durante la confirmación de la transacción.
+
+
+# Pasos integración Webpay
+
+Para la integración de Webpay se utilizó como referencia la ayuantía del curso. Pasos:
+
+1. Configurar Webpay
+
+Se creó un archivo llamado webpayConfig.js, donde desde el SDK de Transbank (el cual debimos instalar en yarn) se importa webpay y se define la variable tx, que es una instancia de una transacción de webpay. 
+
+2. Crear la ruta /webpay/create
+
+Esta ruta se encarga de crear la transacción en webpay, utilizando la configuración recién creada, recibiendo de vuelta la URL y el token para redirigir al usuario al pago. Al crearla, se le entrega un id (en este caso el de la request), el monto total, y una ruta en el frontend a la cual el usuario va a ser redirigido al completar la transacción. 
+
+3. Llamar a la ruta webpay/create desde el frontend
+
+En el frontend, cuando se selecciona pagar por webpay, se hace una llamada a la ruta recién creada, entregando la información de la request, y luego se redirige al usuario a la url que webpay retorna con el token asociado. 
+
+4. Crear la ruta webpay/commit
+
+Se crea la ruta en el backend que hace commit a la transacción (utilizando la configuración definida en webpayConfig), y dependiendo de la respuesta envía el mensaje de validación adecuado al canal y modifica el estado de la request. 
+
+4. Crear la vista de redirección
+
+En el frontend, se crea la vista de redirección (que es entregada a webpay al crear la transacción). En esta vista, en primer lugar, se llama a una función que, con el token asociado (obtenido de los parámetros) se llama a la ruta /webpay/commit recién creada. Luego de que se haya hecho el commit de la transacción, se muestra una pantalla de compra finalizada, junto con el estado de esta (aprobado, rechazado, anulado), el cual es recibido como mensaje desde /webpay/commit. 
