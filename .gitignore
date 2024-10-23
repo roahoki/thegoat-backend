@@ -2,3 +2,4 @@ api/node_modules/
 listener/node_modules/
 *.env
 *.pem
+node_modules/

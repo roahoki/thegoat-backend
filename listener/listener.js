@@ -97,11 +97,9 @@ function connectToBroker() {
             // console.log("\n\n\n\nProcesando mensaje de fixtures/requests...");
             apiEndpoint = `${api}/requests`;
         
-            if (parsedMessage.group_id == '23') {
+            if (parsedMessage.group_id == '12345') {
                 a = 1;
-            } else {
-                console.log("Procesando mensaje de fixtures/requests... NO 23");
-                
+            } else {                
                 axios.post(apiEndpoint, parsedMessage, {
                     headers: {
                         'Content-Type': 'application/json'
