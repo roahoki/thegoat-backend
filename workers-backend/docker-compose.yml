@@ -1,0 +1,76 @@
+# services:
+
+#   redis-broker:
+#     # https://redis.com/solutions/use-cases/messaging/
+#     image: redis:7
+#     volumes:
+#       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+
+#   producer:
+#     build:
+#         context: ./project
+#         dockerfile: Dockerfile
+#     command: uvicorn producer:app --reload --host 0.0.0.0 --port 8000
+#     volumes:
+#       - ./project:/opt/
+#     expose:
+#       - 8000
+#     ports:
+#       - '8000:8000'
+#     environment:
+#       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+#       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+#     depends_on:
+#       - redis-broker
+
+#   consumer:
+#     build:
+#       context: ./project
+#       dockerfile: Dockerfile
+#     deploy:
+#       # replicas scales containers
+#       replicas: 2
+#     # concurrency specifies number of worker
+#     # purge deletes the broker queue every time it starts up
+#     command: celery -A consumer.celery_app worker --loglevel=INFO --purge --concurrency=1
+#     volumes:
+#       - ./project:/opt/
+#     depends_on:
+#       - producer
+#     environment:
+#       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+#       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+
+#   dashboard:
+#     build:
+#       context: ./project
+#       dockerfile: Dockerfile
+#     command: bash -c "sleep 10; celery -A consumer.celery_app flower --loglevel=INFO --url_prefix=dashboard;"
+#     expose:
+#       - 5555
+#     ports:
+#       - '5555:5555'
+#     volumes:
+#       - ./project:/opt/
+#     depends_on:
+#       - consumer
+#       # - celery_beat
+#     environment:
+#       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+#       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+
+#   # celery_beat:
+#   #   build:
+#   #     context: ./project
+#   #     dockerfile: Dockerfile
+#   #   command: celery -A consumer.celery_app beat --loglevel=INFO
+#   #   volumes:
+#   #     - ./project:/opt/
+#   #   depends_on:
+#   #     - producer
+#   #   environment:
+#   #     CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+#   #     CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+
+# volumes:
+#   postgres_data:
