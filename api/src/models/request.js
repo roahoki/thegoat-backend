@@ -4,10 +4,10 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Request extends Model {
     static associate(models) {
-      // Definir la asociación con el modelo Usuario
-      Request.belongsTo(models.Usuario, {
-        foreignKey: 'usuarioId',
-        as: 'usuario'  // El alias que quieras usar para la relación
+      // Definir la asociación con el modelo User
+      Request.belongsTo(models.User, {
+        foreignKey: 'user_id',
+        as: 'user'  // El alias que quieras usar para la relación
       });
     }
   }
@@ -61,11 +61,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: 0
     },
-    usuarioId: {
+    user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Usuarios',  // Nombre de la tabla Usuarios
+        model: 'Users',  // Nombre de la tabla User
         key: 'id', 
       },
       onUpdate: 'CASCADE',

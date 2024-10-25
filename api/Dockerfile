@@ -8,8 +8,8 @@ WORKDIR /app
 COPY package.json yarn.lock ./
 
 # Instalar las dependencias usando Yarn
+RUN yarn install
 
-RUN yarn install --production=false
 # Copiar el resto de los archivos de la aplicación al contenedor
 COPY . .
 

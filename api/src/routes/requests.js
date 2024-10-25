@@ -1,13 +1,13 @@
 const Router = require("koa-router");
-const { Request, Usuario, Fixture, ExternalRequest, Team, Odd } = require("../models");
+const { Request, User, Fixture, ExternalRequest, Team, Odd } = require("../models");
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
 const axios = require('axios');
-const fs = require('fs');
+
 const dotenv = require('dotenv');
-const moment = require('moment');
-const db = require("../models");
+
+
 
 // Cargar variables de entorno desde el archivo .env
 dotenv.config();
@@ -21,6 +21,7 @@ const mqttClient = mqtt.connect({
 });
 
 mqttClient.on("error", (err) => {
+    console.log(err);
     mqttClient.end();
 });
 
@@ -34,12 +35,12 @@ async function reservarBonos(fixture_id, quantity, transaction) {
     }
 
     // Verificar si hay suficientes bonos disponibles
-    if (fixture.bonos_disponibles < quantity) {
+    if (fixture.avaible_bonds < quantity) {
         throw new Error("Not enough bonos available");
     }
 
     // Reservar los bonos reduciendo la cantidad disponible
-    fixture.bonos_disponibles -= quantity;
+    fixture.avaible_bonds -= quantity;
     await fixture.save({ transaction });
 }
 
@@ -49,7 +50,7 @@ router.post("/", async (ctx) => {
     const t = await Request.sequelize.transaction();  // Iniciar transacción
 
     try {
-        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, usuarioId, status, request_id: incoming_request_id } = ctx.request.body;
+        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id } = ctx.request.body;
 
         if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
@@ -67,11 +68,12 @@ router.post("/", async (ctx) => {
             country = ipResponse.data.country || "unknown";
         } catch (error) {
             console.error("Error fetching location:", error);
+            console.log(status);
         }
 
         let request_id;
       
-        if (group_id == '15' && usuarioId && typeof request_id === 'undefined') {
+        if (group_id == '15' && user_id && typeof request_id === 'undefined') {
 
             // Generar un nuevo UUID para la request interna
             request_id = uuidv4();
@@ -92,7 +94,7 @@ router.post("/", async (ctx) => {
                 datetime,
                 quantity,
                 seller: 0,  // Siempre es 0
-                usuarioId,
+                user_id,
                 status: "sent",
                 ip_address: clientIP,  // Agregar IP del cliente
                 location: `${city}, ${region}, ${country}`
@@ -201,7 +203,7 @@ router.get("/", async (ctx) => {
         // Buscar las requests con los filtros aplicados
         const requests = await Request.findAndCountAll({
             where,
-            include: [{ model: Usuario, as: 'usuario' }],  // Incluir datos del usuario si es necesario
+            include: [{ model: User, as: 'User' }],  // Incluir datos del User si es necesario
             order: [['createdAt', 'DESC']],
             limit,
             offset: (page - 1) * limit,
@@ -227,7 +229,7 @@ router.get("/:id", async (ctx) => {
     try {
         const request = await Request.findOne({
             where: { request_id: id },
-            include: [{ model: Usuario, as: 'usuario' }]
+            include: [{ model: User, as: 'User' }]
         });
 
         if (!request) {
@@ -251,6 +253,7 @@ router.patch("/validate", async (ctx) => {
 
     try { 
         const { request_id, group_id, seller, valid } = ctx.request.body;
+        console.log(seller);
         // Start transaction
         t = await Request.sequelize.transaction();
 
@@ -277,29 +280,29 @@ router.patch("/validate", async (ctx) => {
 
         // Handle rejected requests
         if (!valid) {
-            fixture.bonos_disponibles += request.quantity;
+            fixture.avaible_bonds += request.quantity;
             await fixture.save({ transaction: t });
         }
 
         // Handle accepted requests for group 15
         if (group_id == "15" && valid) {
             console.log("ENtre al if de validate grupo 15")
-            const usuario = await Usuario.findOne({ where: { id: request.usuarioId }, transaction: t });
-            console.log("Usuario", usuario)
-            if (!usuario) {
+            const user = await User.findOne({ where: { id: request.user_id }, transaction: t });
+            console.log("User", user)
+            if (!user) {
                 ctx.status = 404;
-                ctx.body = { error: "Usuario not found" };
+                ctx.body = { error: "user not found" };
                 return;
             }
 
-            usuario.billetera -= 1000 * request.quantity;
-            if (usuario.billetera < 0) {
+            user.wallet -= 1000 * request.quantity;
+            if (user.wallet < 0) {
                 ctx.status = 402;
-                ctx.body = { error: "Insufficient funds in the user's billetera." };
+                ctx.body = { error: "Insufficient funds in the user's wallet." };
                 return;
             }
 
-            await usuario.save({ transaction: t });
+            await user.save({ transaction: t });
         }
 
         // Update request status
@@ -381,10 +384,10 @@ router.post("/history", async (ctx) => {
                     const newStatus = hasWon ? "won" : "lost";
                     await request.update({ status: newStatus });
 
-                    // Si ganó la apuesta, actualizar la billetera del usuario
+                    // Si ganó la apuesta, actualizar la wallet del user
                     if (hasWon) {
-                        const usuario = await Usuario.findOne({ where: { id: request.usuarioId } });
-                        if (usuario) {
+                        const user = await User.findOne({ where: { id: request.user_id } });
+                        if (user) {
                             // Obtener los odds desde la fixture
                             const oddsArray = dbFixture.odds || [];
                             const oddsMatchWinner = oddsArray.find(odd => odd.dataValues.name === "Match Winner");
@@ -402,9 +405,9 @@ router.post("/history", async (ctx) => {
 
                             if (winningOdd) {
                                 const winnings = 1000 * request.quantity * parseFloat(winningOdd.odd); // Calcular las ganancias
-                                console.log("AGREGANDO PLATA A LA BILLETERA")
-                                usuario.billetera += winnings; // Agregar ganancias a la billetera
-                                await usuario.save(); // Guardar los cambios en la billetera
+                                console.log("AGREGANDO PLATA A LA wallet")
+                                user.wallet += winnings; // Agregar ganancias a la wallet
+                                await user.save(); // Guardar los cambios en la wallet
                             }
                         }
                     }
@@ -428,7 +431,7 @@ router.get('/bond', async (ctx) => {
       // Extract the relevant data
       const data = fixtures.map(fixture => ({
         fixture_id: fixture.id, // Assuming 'id' is the fixture ID field
-        bonos_disponibles: fixture.bonos_disponibles // Assuming 'bonos_disponibles' is a field in the fixture
+        avaible_bonds: fixture.avaible_bonds // Assuming 'avaible_bonds' is a field in the fixture
       }));
   
       // Return the data as JSON

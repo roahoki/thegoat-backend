@@ -2,7 +2,7 @@ const Router = require("koa-router");
 const { Fixture, Team, League, Goal, Odd } = require("../models"); 
 const router = new Router();
 const { Op } = require("sequelize");
-const axios = require('axios');
+
 
 // Endpoint para recibir los datos del listener
 router.post("/update", async (ctx) => {

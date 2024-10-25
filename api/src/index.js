@@ -1,6 +1,6 @@
 const app = require('./app.js');
 const db = require('./models');
-const orm = require('./models');
+
 const dotenv = require('dotenv');
 
 dotenv.config();

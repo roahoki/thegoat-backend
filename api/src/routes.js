@@ -2,7 +2,7 @@ const Router = require('koa-router');
 const fixtures = require('./routes/fixtures.js');
 const landing = require('./routes/landing.js');
 const requests = require('./routes/requests.js');
-const usuario = require('./models/usuario.js');
+
 const users = require('./routes/users.js');
 
 const router = new Router();

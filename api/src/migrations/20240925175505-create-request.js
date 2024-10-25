@@ -54,7 +54,7 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Usuarios',  // Referencia a la tabla Usuarios
+          model: 'Users',
           key: 'id'
         }
       },
@@ -73,7 +73,7 @@ module.exports = {
       }
     });
   },
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     await queryInterface.dropTable('Requests');
   }
 };
