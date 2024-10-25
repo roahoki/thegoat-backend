@@ -35,12 +35,12 @@ async function reservarBonos(fixture_id, quantity, transaction) {
     }
 
     // Verificar si hay suficientes bonos disponibles
-    if (fixture.avaible_bonds < quantity) {
+    if (fixture.available_bonds < quantity) {
         throw new Error("Not enough bonos available");
     }
 
     // Reservar los bonos reduciendo la cantidad disponible
-    fixture.avaible_bonds -= quantity;
+    fixture.available_bonds -= quantity;
     await fixture.save({ transaction });
 }
 
@@ -280,7 +280,7 @@ router.patch("/validate", async (ctx) => {
 
         // Handle rejected requests
         if (!valid) {
-            fixture.avaible_bonds += request.quantity;
+            fixture.available_bonds += request.quantity;
             await fixture.save({ transaction: t });
         }
 
@@ -431,7 +431,7 @@ router.get('/bond', async (ctx) => {
       // Extract the relevant data
       const data = fixtures.map(fixture => ({
         fixture_id: fixture.id, // Assuming 'id' is the fixture ID field
-        avaible_bonds: fixture.avaible_bonds // Assuming 'avaible_bonds' is a field in the fixture
+        available_bonds: fixture.available_bonds // Assuming 'available_bonds' is a field in the fixture
       }));
   
       // Return the data as JSON

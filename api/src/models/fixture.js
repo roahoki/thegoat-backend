@@ -44,7 +44,7 @@ module.exports = (sequelize, DataTypes) => {
     status_long: DataTypes.STRING,
     status_short: DataTypes.STRING,
     status_elapsed: DataTypes.INTEGER,
-    avaible_bonds: {
+    available_bonds: {
       type: DataTypes.INTEGER,
       defaultValue: 40,  // Valor por defecto
       allowNull: false
