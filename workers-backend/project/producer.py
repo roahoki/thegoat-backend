@@ -46,6 +46,7 @@ def get_job(job_id: str):
         "result": job.result,
     }
 
+# REQUISITO FUNCIONAL 1 esto se envía al comprar
 @app.post("/sum")
 def post_publish_job(number: Number):
     job = sum_to_n_job.delay(number.number)
@@ -54,6 +55,7 @@ def post_publish_job(number: Number):
         "job_id": job.id,
     }
 
+# REQUISITO FUNCIONAL 2 esto se envía al entrar a la página HOT BETS
 @app.get("/sum/{job_id}")
 def get_job(job_id: str):
     job = sum_to_n_job.AsyncResult(job_id)
@@ -62,3 +64,8 @@ def get_job(job_id: str):
         "ready": job.ready(),
         "result": job.result,
     }
+
+# MODELO JOB EN POSTGRES
+# |job id  |   state    |  result | date
+# |abc12d  |in progress |   null  | null
+# |kdf323  |   finished |   999   | 25-10-2024

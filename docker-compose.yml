@@ -123,5 +123,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  # postgres_data:
   db_data:
