@@ -73,17 +73,19 @@ router.get('/sum/:user_id', async (ctx) => {
             return;
         }
 
-        let job = await Job.findOne({ where: { user_id, state: true }, order: [['createdAt', 'DESC']] });
+        // Recuperar el job más reciente sin importar su estado
+        let job = await Job.findOne({ where: { user_id }, order: [['createdAt', 'DESC']] });
 
         if (!job) {
-            job = await Job.findOne({ where: { user_id, state: false }, order: [['createdAt', 'DESC']] });
+            ctx.status = 404;
+            ctx.body = { error: 'No job found for the given user_id' };
+            return;
+        }
 
-            if (!job) {
-                ctx.status = 404;
-                ctx.body = { error: 'No job found for the given user_id' };
-                return;
-            }
-
+        // Verificar si el estado del job es true
+        if (job.state) {
+            ctx.body = { result: job.result };
+        } else {
             // Consultar al backend de workers por el estado del job
             const jobStatus = await checkJobStatusFromBackend(job.job_id);
 
@@ -97,8 +99,6 @@ router.get('/sum/:user_id', async (ctx) => {
             } else {
                 ctx.body = { message: 'Job is still in process' };
             }
-        } else {
-            ctx.body = { result: job.result };
         }
 
     } catch (error) {
