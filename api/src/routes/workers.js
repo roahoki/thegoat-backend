@@ -55,14 +55,9 @@ router.post('/sum', async (ctx) => {
 
 // GET /workers/:user_id
 // Esta función se encarga de buscar el resultado de un job en la base de datos, por lo que primero se
-// busca el job más reciente con el user_id dado y que esté en estado 'finished', si no se encuentra se
-// busca el job más reciente con el user_id dado y que esté en estado 'pending', si no se encuentra se
-// responde con un error NOT FOUND user no tiene jobs en la base de datos.
-// Si se encuentra un job finished se responde con el resultado del job.
-// Si se encuentra un job pending se consulta al workers backend por el estado del job y se actualiza el
-// estado del job en la base de datos, si el estado es 'finished' se responde con el resultado del job.
-// Si el estado es 'pending' se responde con un mensaje de que el job está en proceso.
-
+// busca el job más reciente con el user_id dado, luego se revisa si state es true, si es true se responde
+// con el resultado del job, si es false se consulta al workers backend por el estado del job y se  
+// actualiza el estado del job en la base de datos, si el estado es true se responde con el resultado del job, si el estado es false se responde con un mensaje de que el job está en proceso.
 router.get('/sum/:user_id', async (ctx) => {
     try {
         const { user_id } = ctx.params;

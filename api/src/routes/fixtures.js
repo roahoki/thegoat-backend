@@ -223,4 +223,55 @@ router.get("/data/:id", async (ctx) => {
     ctx.body = fixture;
 });
 
+
+router.get("/all", async (ctx) => {
+    try {
+        const fixtures = await Fixture.findAll({
+            include: [
+                { model: Team, as: "homeTeam" },
+                { model: Team, as: "awayTeam" },
+                { model: League, as: "league" },
+                { model: Goal, as: "goals" },
+                { model: Odd, as: "odds" },
+            ],
+            order: [['updatedAt', 'DESC']],
+        });
+
+        ctx.status = 200;
+        ctx.body = fixtures;
+    } catch (error) {
+        console.error("Error fetching fixtures:", error);
+        ctx.status = 500;
+        ctx.body = { message: "An error occurred while fetching fixtures." };
+    }
+});
+
+
+router.get("/started", async (ctx) => {
+    try {
+        const fixtures = await Fixture.findAll({
+            where: {
+                status_short: {
+                    [Op.ne]: 'NS'
+                }
+            },
+            include: [
+                { model: Team, as: "homeTeam" },
+                { model: Team, as: "awayTeam" },
+                { model: League, as: "league" },
+                { model: Goal, as: "goals" },
+                { model: Odd, as: "odds" },
+            ],
+            order: [['updatedAt', 'DESC']],
+        });
+
+        ctx.status = 200;
+        ctx.body = fixtures;
+    } catch (error) {
+        console.error("Error fetching fixtures:", error);
+        ctx.status = 500;
+        ctx.body = { message: "An error occurred while fetching fixtures." };
+    }
+});
+
 module.exports = router;
