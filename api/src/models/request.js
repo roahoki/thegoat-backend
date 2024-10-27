@@ -74,15 +74,19 @@ module.exports = (sequelize, DataTypes) => {
     status: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'pending'  // Valor por defecto
+      defaultValue: 'pending'
     },
     ip_address: {
       type: DataTypes.STRING,
-      allowNull: true, // Nueva columna para almacenar la IP
+      allowNull: true,
     },
     location: {
       type: DataTypes.STRING,
-      allowNull: true, // Nueva columna para almacenar la ubicación
+      allowNull: true,
+    },
+    wallet: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
     }
   }, {
     sequelize,

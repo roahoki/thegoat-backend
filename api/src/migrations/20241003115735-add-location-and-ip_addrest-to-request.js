@@ -14,7 +14,7 @@ module.exports = {
       allowNull: true,
     });
   },
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     // Eliminar las columnas en caso de deshacer la migración
     await queryInterface.removeColumn('Requests', 'location');
     await queryInterface.removeColumn('Requests', 'ip_address');
