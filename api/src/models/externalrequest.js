@@ -3,8 +3,7 @@ const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class ExternalRequest extends Model {
-    static associate(models) {
-    }
+
   }
 
   ExternalRequest.init({

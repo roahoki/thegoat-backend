@@ -1,7 +1,7 @@
 'use strict';
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Usuarios', {
+    await queryInterface.createTable('Users', {
       id: {
         allowNull: false,
         primaryKey: true,
@@ -9,13 +9,13 @@ module.exports = {
         type: Sequelize.INTEGER
         
       },
-      billetera: {
+      wallet: {
         type: Sequelize.INTEGER,
         allowNull: false
       }
     });
   },
-  down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable('Usuarios');
+  down: async (queryInterface) => {
+    await queryInterface.dropTable('Users');
   }
 };

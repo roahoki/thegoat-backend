@@ -16,7 +16,8 @@ const mqttClient = mqtt.connect({
 });
 
 mqttClient.on("error", (err) => {
-    mqttClient.end();
+  console.log(err);
+  mqttClient.end();
 });
 
 const trxRouter = new Router();

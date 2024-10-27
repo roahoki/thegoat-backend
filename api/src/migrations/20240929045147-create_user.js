@@ -2,14 +2,14 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable('Usuarios', {
+    await queryInterface.createTable('Users', {
       id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         primaryKey: true,
         autoIncrement: true,
       },
-      billetera: {
+      wallet: {
         type: Sequelize.INTEGER,
         allowNull: false,
         defaultValue: 0,
@@ -27,11 +27,10 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
-      // Add createdAt and updatedAt if you decide to use timestamps
     });
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     await queryInterface.dropTable('Usuarios');
   },
 };
