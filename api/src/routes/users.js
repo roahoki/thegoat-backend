@@ -1,6 +1,6 @@
 const Router = require('koa-router');
 const router = new Router();
-const { User, Request } = require('../models');
+const { User, Request, Fixture, Team } = require('../models');
 
 // GET /users
 router.get('/', async (ctx) => {
@@ -118,18 +118,60 @@ router.get('/:id/requests', async (ctx) => {
 
   try {
     console.log('id', id);
+
     const requests = await Request.findAll({
       where: { user_id: id },
+      include: [
+        { model: User, as: 'user', attributes: ['name', 'email'] }, // Incluye los datos del usuario
+      ],
     });
+    
+    const requestsWithTeamData = await Promise.all(
+      requests.map(async (request) => {
+        // Buscar el Fixture relacionado
+        const fixture = await Fixture.findOne({ 
+          where: { id: request.fixture_id },
+          attributes: ['home_team_id', 'away_team_id'], 
+        });
+    
+        // Si se encuentra el fixture, buscar los nombres de los equipos
+        if (fixture) {
+          const homeTeam = await Team.findOne({
+            where: { id: fixture.home_team_id },
+            attributes: ['name'],
+          });
+          const awayTeam = await Team.findOne({
+            where: { id: fixture.away_team_id },
+            attributes: ['name'],
+          });
+    
+          // Incluir nombres de los equipos en el resultado de la request
+          return {
+            ...request.toJSON(),
+            home_team_name: homeTeam ? homeTeam.name : null,
+            away_team_name: awayTeam ? awayTeam.name : null,
+          };
+        } else {
+          // Si no se encuentra el fixture, devolver la request sin datos de equipo
+          return {
+            ...request.toJSON(),
+            home_team_name: null,
+            away_team_name: null,
+          };
+        }
+      })
+    );
+    
 
-    if (!requests.length) {
+    if (!requestsWithTeamData.length) {
       ctx.status = 404;
       ctx.body = { error: 'No requests found for this user.' };
       return;
     }
 
     ctx.status = 200;
-    ctx.body = { requests };
+    ctx.body = { requestsWithTeamData };
+
   } catch (error) {
     console.error(error);
     ctx.status = 500;
