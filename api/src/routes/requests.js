@@ -224,9 +224,16 @@ router.get("/", async (ctx) => {
 router.get("/:id", async (ctx) => {
     const { id } = ctx.params;
 
+    if (!id) {
+        ctx.status = 400;
+        ctx.body = { error: "Request ID is required" };
+        return;
+    }
+
     try {
-        const request = await Request.findOne({
-            where: { request_id: id },
+        // Buscar en el modelo Request
+        let request = await Request.findOne({
+            where: { usuarioId: id },
             include: [{ model: Usuario, as: 'usuario' }]
         });
 
@@ -298,6 +305,18 @@ router.patch("/validate", async (ctx) => {
                 ctx.body = { error: "Insufficient funds in the user's billetera." };
                 return;
             }
+
+            // REQUEST DE SUM
+            user_id = request.usuarioId;
+            number = 7;
+
+            const requestBody = { user_id: user_id, number: number };
+            const response = await axios.post('http://api:3000/sum', requestBody);
+
+
+
+
+
 
             await usuario.save({ transaction: t });
         }

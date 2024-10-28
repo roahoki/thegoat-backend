@@ -65,7 +65,16 @@ def get_job(job_id: str):
         "result": job.result,
     }
 
+@app.post("/sum")
+def post_publish_job_recommendation():
+    pass
+
+@app.get("/recommendation/{job_id}")
+def get_job_recommendation(job_id: str):
+    pass
+
+
 # MODELO JOB EN POSTGRES
 # |job id  |   state    |  result | date
-# |abc12d  |in progress |   null  | null
-# |kdf323  |   finished |   999   | 25-10-2024
+# |abc12d  |   false    |   null  | null
+# |kdf323  |   true     |   999   | 25-10-2024

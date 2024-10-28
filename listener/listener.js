@@ -97,7 +97,7 @@ function connectToBroker() {
             // console.log("\n\n\n\nProcesando mensaje de fixtures/requests...");
             apiEndpoint = `${api}/requests`;
         
-            if (parsedMessage.group_id == '12345') {
+            if (parsedMessage.group_id != '15') {
                 a = 1;
             } else {                
                 axios.post(apiEndpoint, parsedMessage, {

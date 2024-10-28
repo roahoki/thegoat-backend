@@ -22,3 +22,8 @@ def wait_and_return():
 def sum_to_n_job(number):
     result = sum_to_n(number)
     return result
+
+
+@shared_task
+def recommendation():
+    pass
