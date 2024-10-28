@@ -1,0 +1,26 @@
+# # This docker compose is only inteded to be used in the assistanship class
+# # It is not useful for the project.
+# services:
+
+#   celery_worker_alone:
+#     build:
+#       context: ./app
+#       dockerfile: Dockerfile
+#     deploy:
+#       # replicas scales containers
+#       replicas: 15
+#     # concurrency specifies number of worker
+#     # purge deletes the broker queue every time it starts up
+#     command: celery -A worker.celery_app worker --loglevel=INFO --purge --concurrency=1
+#     volumes:
+#       - ./app:/opt/
+#     environment:
+#       CELERY_BROKER_URL: "redis://172.23.0.2:6379/0"
+#       CELERY_RESULT_BACKEND: "redis://172.23.0.2:6379/0"
+#     networks:
+#       - existing-network
+
+# networks:
+#   existing-network:
+#     external:
+#       name: ayudantia-workers-celery-2023-1_default

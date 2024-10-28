@@ -251,10 +251,23 @@ router.get("/", async (ctx) => {
 router.get("/:id", async (ctx) => {
     const { id } = ctx.params;
 
+    if (!id) {
+        ctx.status = 400;
+        ctx.body = { error: "Request ID is required" };
+        return;
+    }
+
     try {
+<<<<<<< HEAD
         const request = await Request.findOne({
             where: { request_id: id },
             include: [{ model: User, as: 'User' }]
+=======
+        // Buscar en el modelo Request
+        let request = await Request.findOne({
+            where: { usuarioId: id },
+            include: [{ model: Usuario, as: 'usuario' }]
+>>>>>>> origin/workers
         });
 
         if (!request) {
@@ -338,6 +351,22 @@ router.patch("/validate", async (ctx) => {
                 console.log("Webpay payment, no changes to wallet.");
             }
 
+<<<<<<< HEAD
+=======
+            // REQUEST DE SUM
+            user_id = request.usuarioId;
+            number = 7;
+
+            const requestBody = { user_id: user_id, number: number };
+            const response = await axios.post('http://api:3000/sum', requestBody);
+
+
+
+
+
+
+            await usuario.save({ transaction: t });
+>>>>>>> origin/workers
         }
 
         // Actualizar el estado de la request, independientemente de si es wallet o Webpay

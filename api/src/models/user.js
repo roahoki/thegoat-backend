@@ -4,8 +4,14 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
     static associate(models) {
-      User.hasMany(models.Request, {
+
+      Usuario.hasMany(models.Job, {
+        foreignKey: 'user_id', // Foreign key in Job model
+        as: 'jobs'             // Alias for the association
+      });
+      Usuario.hasMany(models.Request, {
         foreignKey: 'user_id', // Foreign key
+
         as: 'requests'            // Pluralized 'request' to 'requests'
       });
     }
