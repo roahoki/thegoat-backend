@@ -44,6 +44,7 @@ router.post('/sum', async (ctx) => {
         // agregar una fila a la tabla jobs
         const job = await Job.create({ job_id, user_id });
         console.log('\n\n\n\n))))))))))))))))))))))))))))))))))))))))))))))))))))))Job created:');
+        console.log(job);
         ctx.body = response.data;
 
     } catch (error) {

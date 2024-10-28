@@ -13,7 +13,7 @@ services:
 
 # Main Backend
   api:
-    image: public.ecr.aws/h8q2k9k3/thegoat-backend:api-latest
+    build: ./api
     ports:
       - "3000:3000"
     environment:
@@ -27,8 +27,25 @@ services:
       - ./.env
     volumes:
       - ./api:/app
-      - /app/node_modules
-    command: yarn start
+    command: yarn dev
+
+  # api:
+  #   image: public.ecr.aws/h8q2k9k3/thegoat-backend:api-latest
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=postgres://postgres:password@db:5432/mydatabase
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - app-network
+  #   restart: always
+  #   env_file:
+  #     - ./.env
+  #   volumes:
+  #     - ./api:/app
+  #     - /app/node_modules
+  #   command: yarn start
 
   linter:
     build: ./api
