@@ -50,9 +50,10 @@ router.post("/", async (ctx) => {
 
         const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id, wallet } = ctx.request.body;
 
-        if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof wallet !== 'boolean' || typeof quantity !== 'number' || quantity <= 0) {
+        if (!group_id || !fixture_id || !league_name || !round || !date || !datetime || typeof wallet !== 'boolean' || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
-            ctx.body = { message: "Invalid request format." };
+            const print_message = ctx.request.body;
+            ctx.body = { message: print_message };
             await t.commit();
             return;
         }
@@ -352,9 +353,6 @@ router.patch("/validate", async (ctx) => {
             const response = await axios.post('http://api:3000/sum', requestBody);
 
             console.log(response);
-
-
-
 
             await user.save({ transaction: t });
 

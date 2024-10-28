@@ -28,6 +28,7 @@ services:
     volumes:
       - ./api:/app
     command: yarn dev
+# command: sh -c "npx sequelize-cli db:migrate:undo:all && npx sequelize-cli db:migrate && yarn dev"
 
   # api:
   #   image: public.ecr.aws/h8q2k9k3/thegoat-backend:api-latest

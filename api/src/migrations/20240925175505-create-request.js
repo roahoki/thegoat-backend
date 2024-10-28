@@ -30,7 +30,7 @@ module.exports = {
       },
       result: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       deposit_token: {
         type: Sequelize.STRING,
