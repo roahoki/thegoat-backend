@@ -185,11 +185,11 @@ router.post("/", async (ctx) => {
             ctx.body = { message: "External request successfully created!", externalRequest };
 
         } else {
-            // Si el group_id es 15, pero la request ya existe o no tiene user_id
+            // Si el group_id es 15, pero la request ya existe o no tiene user id
             console.log("Request ID:", incoming_request_id);
             console.log("Group ID:", group_id);
             ctx.status = 400;
-            ctx.body = { message: "Either user_id is missing, or the request already exists." };
+            ctx.body = { message: "Either user id is missing, or the request already exists." };
         }
 
     } catch (error) {
@@ -211,7 +211,7 @@ router.get("/", async (ctx) => {
 
     let where = {};
 
-    // Filtro por user_id si es proporcionado
+    // Filtro por user id si es proporcionado
     if (user_id) {
         where.user_id = user_id;
     }
@@ -345,18 +345,18 @@ router.patch("/validate", async (ctx) => {
                 console.log("Webpay payment, no changes to wallet.");
             }
             // REQUEST DE SUM
-            user_id = request.user_id;
-            number = 7;
-
+            const user_id = request.user_id; //error
+            const number = 7;
+            console.log(user_id);
             const requestBody = { user_id: user_id, number: number };
             const response = await axios.post('http://api:3000/sum', requestBody);
 
+            console.log(response);
 
 
 
 
-
-            await usuario.save({ transaction: t });
+            await user.save({ transaction: t });
 
         }
 

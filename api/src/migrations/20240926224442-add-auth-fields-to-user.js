@@ -19,7 +19,8 @@ module.exports = {
     // If you want to add validations or default values, include them here
   },
 
-  down: async (queryInterface) => {
+  down: async (queryInterface, Sequelize) => {
+    console.log(Sequelize);
     await queryInterface.removeColumn('Users', 'auth0Token');
     await queryInterface.removeColumn('Users', 'email');
     await queryInterface.removeColumn('Users', 'name');

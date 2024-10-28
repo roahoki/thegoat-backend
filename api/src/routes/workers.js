@@ -126,14 +126,14 @@ async function checkJobStatusFromBackend(jobId) {
 // POST /workers/recommendation
 // Esta función se encarga de hacer un request al backend de workers para obtener una recomendación.
 router.post('/recommendation', async (ctx) => {
-    pass;
+    console.log(ctx);
 });
 
 
 // GET /workers/recommendation/:user_id
 // Esta función se encarga buscar el resultado de un job de recomendación en la base de datos
 router.get('/recommendation/:user_id', async (ctx) => {
-    pass;
+    console.log(ctx);
 });
 
 
