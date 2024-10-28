@@ -4,7 +4,7 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Job extends Model {
     static associate(models) {
-      Job.belongsTo(models.Usuario, {
+      Job.belongsTo(models.User, {
         foreignKey: 'user_id', // Foreign key in Job model
         as: 'usuario'          // Alias for the association
       });
