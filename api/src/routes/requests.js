@@ -4,6 +4,7 @@ const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
 const axios = require('axios');
+const { sendConfirmationEmail } = require('../config/mailer');
 
 const dotenv = require('dotenv');
 // Cargar variables de entorno desde el archivo .env
@@ -311,7 +312,7 @@ router.patch("/validate", async (ctx) => {
         if (group_id == "15") {
             const user = await User.findOne({ where: { id: request.user_id }, transaction: t });
             if (!user) {
-                await t.rollback(); // Asegurar rollback antes de retornar
+                await t.rollback();
                 ctx.status = 404;
                 ctx.body = { error: "user not found" };
                 return;
@@ -323,7 +324,7 @@ router.patch("/validate", async (ctx) => {
                 if (valid) {
                     user.wallet -= 1000 * request.quantity;
                     if (user.wallet < 0) {
-                        await t.rollback(); // Asegurar rollback antes de retornar
+                        await t.rollback(); 
                         ctx.status = 402;
                         ctx.body = { error: "Insufficient funds in the user's wallet." };
                         return;
@@ -333,11 +334,27 @@ router.patch("/validate", async (ctx) => {
                     // Si la transacción con wallet fue rechazada, no ajustar billetera
                     console.log("Wallet payment rejected, no balance changes.");
                 }
+
+                const subject = valid ? "Confirmación de Pago" : "Rechazo de Pago";
+                const text = `Hola ${user.name}, tu pago con billetera para la request con ID: ${request_id} ha sido ${newStatus}. Gracias por usar nuestros servicios.`;
+                try {
+                    await sendConfirmationEmail(user.email, subject, text);
+                  } catch (error) {
+                    console.error("Error sending confirmation email:", error);
+                  }
+
             } else {
                 // Si es Webpay (wallet = false), no hacer nada con la billetera
                 console.log("Webpay payment, no changes to wallet.");
-            }
 
+                const subject = valid ? "Confirmación de Pago" : "Rechazo de Pago";
+                const text = `Hola ${user.name}, tu pago con webpay para la request con ID: ${request_id} ha sido ${newStatus}. Gracias por usar nuestros servicios.`;
+                try {
+                    await sendConfirmationEmail(user.email, subject, text);
+                  } catch (error) {
+                    console.error("Error sending confirmation email:", error);
+                  }
+            }
         }
 
         // Actualizar el estado de la request, independientemente de si es wallet o Webpay
