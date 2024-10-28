@@ -335,8 +335,8 @@ router.patch("/validate", async (ctx) => {
                     console.log("Wallet payment rejected, no balance changes.");
                 }
 
-                const subject = valid ? "Confirmación de Pago" : "Rechazo de Pago";
-                const text = `Hola ${user.name}, tu pago con billetera para la request con ID: ${request_id} ha sido ${newStatus}. Gracias por usar nuestros servicios.`;
+                const subject = valid ? "Payment confirmation" : "Payment rejection";
+                const text = `Hi ${user.name}, your wallet payment for request with id: ${request_id} has been ${newStatus}. Thank you!.`;
                 try {
                     await sendConfirmationEmail(user.email, subject, text);
                   } catch (error) {
@@ -347,8 +347,8 @@ router.patch("/validate", async (ctx) => {
                 // Si es Webpay (wallet = false), no hacer nada con la billetera
                 console.log("Webpay payment, no changes to wallet.");
 
-                const subject = valid ? "Confirmación de Pago" : "Rechazo de Pago";
-                const text = `Hola ${user.name}, tu pago con webpay para la request con ID: ${request_id} ha sido ${newStatus}. Gracias por usar nuestros servicios.`;
+                const subject = valid ? "Payment confirmation" : "Payment rejection";
+                const text = `Hi ${user.name}, your webpay payment for request with id: ${request_id} has been ${newStatus}. Thank you!.`;
                 try {
                     await sendConfirmationEmail(user.email, subject, text);
                   } catch (error) {
