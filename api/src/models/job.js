@@ -6,7 +6,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       Job.belongsTo(models.User, {
         foreignKey: 'user_id', // Foreign key in Job model
-        as: 'User'          // Alias for the association
+        as: 'user'          // Alias for the association
       });
     }
   }
