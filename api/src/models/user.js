@@ -5,11 +5,11 @@ module.exports = (sequelize, DataTypes) => {
   class User extends Model {
     static associate(models) {
 
-      Usuario.hasMany(models.Job, {
+      User.hasMany(models.Job, {
         foreignKey: 'user_id', // Foreign key in Job model
         as: 'jobs'             // Alias for the association
       });
-      Usuario.hasMany(models.Request, {
+      User.hasMany(models.Request, {
         foreignKey: 'user_id', // Foreign key
 
         as: 'requests'            // Pluralized 'request' to 'requests'
