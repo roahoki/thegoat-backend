@@ -1,6 +1,6 @@
 # celery
 from celery import shared_task
-from celery_config.controllers import sum_to_n
+from celery_config.controllers import sum_to_n, recommendation_return_best
 
 # standard
 import time
@@ -25,6 +25,6 @@ def sum_to_n_job(number):
 
 
 @shared_task
-def recommendation(json):
-    result = recommendation_extract_feature(json)
+def recommendation(bets_results, upcoming_fixtures, old_fixtures):
+    result = recommendation_return_best(bets_results, upcoming_fixtures, old_fixtures)
     return result

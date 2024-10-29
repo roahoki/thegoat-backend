@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 # celery
-from celery_config.tasks import wait_and_return, sum_to_n_job
+from celery_config.tasks import wait_and_return, sum_to_n_job, recommendation
 from models import Number, BetInfo
 
 app = FastAPI()
@@ -72,7 +72,10 @@ def get_job(job_id: str):
 
 @app.post("/recommendation")
 def post_publish_job_recommendation(data: BetInfo):
-    job = recommendation.delay(bets_results=data.bets_results, upcoming_fixtures=data.upcoming_fixture)
+    job = recommendation.delay(bets_results=data.bets_results,
+                               upcoming_fixtures=data.upcoming_fixtures,
+                               old_fixtures=data.old_fixtures)
+
     return {
         "message": "recommendation job published",
         "job_id": job.id,

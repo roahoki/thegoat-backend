@@ -21,7 +21,7 @@ module.exports = {
         defaultValue: false
       },
       result: {
-        type: Sequelize.INTEGER,//adaptado a workers/sum
+        type: Sequelize.TEXT,//adaptado a workers/sum
         defaultValue: null
       },
       createdAt: {

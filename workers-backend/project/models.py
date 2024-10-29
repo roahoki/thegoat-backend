@@ -7,3 +7,4 @@ class Number(BaseModel):
 class BetInfo(BaseModel):
     bets_results: List[Any]
     upcoming_fixtures: List[Any]
+    old_fixtures: List[Any]

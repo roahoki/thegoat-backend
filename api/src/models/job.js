@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: false
     },
     result: {
-      type: DataTypes.INTEGER, // adaptado a workers/sum
+      type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: null
     },
