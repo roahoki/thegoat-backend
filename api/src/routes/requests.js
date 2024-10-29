@@ -354,7 +354,14 @@ router.patch("/validate", async (ctx) => {
             } else {
                 // Si es Webpay (wallet = false), no hacer nada con la billetera
                 console.log("Webpay payment, no changes to wallet.");
-
+        
+                const user_id = request.user_id; //error
+                const requestBody = { user_id: user_id};
+                const response = await axios.post('http://api:3000/workers/recommendation', requestBody);
+    
+                console.log(response);
+    
+                await user.save({ transaction: t });
                 const subject = valid ? "Payment confirmation" : "Payment rejection";
                 const text = `Hi ${user.name}, your webpay payment for request with id: ${request_id} has been ${newStatus}. Thank you!.`;
                 try {
