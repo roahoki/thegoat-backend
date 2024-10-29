@@ -35,7 +35,8 @@ module.exports = {
       }
     });
   },
-  async down(queryInterface) {
+  async down(queryInterface, Sequelize) {
+    console.log(Sequelize);
     await queryInterface.dropTable('Odds');
   }
 };

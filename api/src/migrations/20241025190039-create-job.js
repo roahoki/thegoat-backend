@@ -2,31 +2,38 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Teams', {
+    await queryInterface.createTable('Jobs', {
       id: {
-        allowNull: false,
+        type: Sequelize.INTEGER,
         autoIncrement: true,
         primaryKey: true,
+      },
+      job_id: {
+        type: Sequelize.UUID,
+        defaultValue: null,
+        allowNull: false,
+      },
+      user_id: {
         type: Sequelize.INTEGER
       },
-      name: {
-        type: Sequelize.STRING
+      state: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
       },
-      logo: {
-        type: Sequelize.STRING
+      result: {
+        type: Sequelize.TEXT,//adaptado a workers/sum
+        defaultValue: null
       },
       createdAt: {
-        allowNull: false,
         type: Sequelize.DATE
       },
       updatedAt: {
-        allowNull: false,
         type: Sequelize.DATE
-      }
+      },
     });
   },
   async down(queryInterface, Sequelize) {
     console.log(Sequelize);
-    await queryInterface.dropTable('Teams');
+    await queryInterface.dropTable('Jobs');
   }
 };

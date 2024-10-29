@@ -13,8 +13,11 @@ RUN yarn install
 # Copiar el resto de los archivos de la aplicación al contenedor
 COPY . .
 
+COPY wait-for-it.sh /wait-for-it.sh
+RUN chmod +x /wait-for-it.sh
 # Exponer el puerto en el que corre la API
 EXPOSE 3000
 
 # Comando para ejecutar las migraciones y luego iniciar la API
-CMD ["sh", "-c", "npx sequelize-cli db:migrate && yarn dev"]
+# CMD ["/wait-for-it.sh","sh", "-c", "npx sequelize-cli db:migrate && yarn dev"]
+CMD ["/wait-for-it.sh", "db:5432", "--", "sh", "-c", "npx sequelize-cli db:migrate && yarn dev"]

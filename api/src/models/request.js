@@ -41,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     result: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true
     },
     deposit_token: {
       type: DataTypes.STRING,

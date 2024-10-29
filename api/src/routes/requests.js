@@ -51,9 +51,10 @@ router.post("/", async (ctx) => {
 
         const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id, wallet } = ctx.request.body;
 
-        if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof wallet !== 'boolean' || typeof quantity !== 'number' || quantity <= 0) {
+        if (!group_id || !fixture_id || !league_name || !round || !date || !datetime || typeof wallet !== 'boolean' || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
-            ctx.body = { message: "Invalid request format." };
+            const print_message = ctx.request.body;
+            ctx.body = { message: print_message };
             await t.commit();
             return;
         }
@@ -186,11 +187,11 @@ router.post("/", async (ctx) => {
             ctx.body = { message: "External request successfully created!", externalRequest };
 
         } else {
-            // Si el group_id es 15, pero la request ya existe o no tiene user_id
+            // Si el group_id es 15, pero la request ya existe o no tiene user id
             console.log("Request ID:", incoming_request_id);
             console.log("Group ID:", group_id);
             ctx.status = 400;
-            ctx.body = { message: "Either user_id is missing, or the request already exists." };
+            ctx.body = { message: "Either user id is missing, or the request already exists." };
         }
 
     } catch (error) {
@@ -212,7 +213,7 @@ router.get("/", async (ctx) => {
 
     let where = {};
 
-    // Filtro por user_id si es proporcionado
+    // Filtro por user id si es proporcionado
     if (user_id) {
         where.user_id = user_id;
     }
@@ -252,10 +253,17 @@ router.get("/", async (ctx) => {
 router.get("/:id", async (ctx) => {
     const { id } = ctx.params;
 
+    if (!id) {
+        ctx.status = 400;
+        ctx.body = { error: "Request ID is required" };
+        return;
+    }
+
     try {
         const request = await Request.findOne({
             where: { request_id: id },
             include: [{ model: User, as: 'User' }]
+
         });
 
         if (!request) {

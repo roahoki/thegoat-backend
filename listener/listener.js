@@ -63,6 +63,9 @@ function connectToBroker() {
             });
             
         } else if (topic === "fixtures/validation") {
+            if (parsedMessage.group_id != '15') {
+                a = 1;
+            } else {   
             console.log("\n\nProcesando mensaje de fixtures/validation...\n\n");
             console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
             
@@ -88,7 +91,7 @@ function connectToBroker() {
                         console.log(`Retrying... Attempts left: ${maxRetries - attempts}`);
                         setTimeout(sendValidation, 1000);
                     }
-                });
+                });}
             };
         
             sendValidation();
@@ -97,11 +100,10 @@ function connectToBroker() {
             // console.log("\n\n\n\nProcesando mensaje de fixtures/requests...");
             apiEndpoint = `${api}/requests`;
         
-            if (parsedMessage.group_id == '23' || parsedMessage.group_id == '12345') {
+            if (parsedMessage.group_id != '15') {
                 a = 1;
-            } else {
-                console.log("Procesando mensaje de fixtures/requests... NO 23 NI 12345");
-                
+            } else {                
+
                 axios.post(apiEndpoint, parsedMessage, {
                     headers: {
                         'Content-Type': 'application/json'

@@ -30,7 +30,7 @@ module.exports = {
       },
       result: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       deposit_token: {
         type: Sequelize.STRING,
@@ -73,7 +73,8 @@ module.exports = {
       }
     });
   },
-  down: async (queryInterface) => {
+  down: async (queryInterface, Sequelize) => {
+    console.log(Sequelize);
     await queryInterface.dropTable('Requests');
   }
 };

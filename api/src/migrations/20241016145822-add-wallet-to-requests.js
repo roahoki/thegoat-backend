@@ -6,7 +6,8 @@ module.exports = {
     });
   },
 
-  down: async (queryInterface) => {
+  down: async (queryInterface, Sequelize) => {
+    console.log(Sequelize);
     await queryInterface.removeColumn('Requests', 'wallet');
   }
 };

@@ -3,3 +3,4 @@ listener/node_modules/
 node_modules/
 *.env
 *.pem
+node_modules/

@@ -1,4 +1,6 @@
+
 services:
+# Listener Service
   listener:
     image: public.ecr.aws/h8q2k9k3/thegoat-backend:listener-latest
     #build: ./listener
@@ -10,7 +12,9 @@ services:
     env_file:
       - ./.env
 
+# Main Backend
   api:
+    build: ./api
     image: public.ecr.aws/h8q2k9k3/thegoat-backend:api-latest
     #build: ./api
     ports:
@@ -26,8 +30,27 @@ services:
       - ./.env
     volumes:
       - ./api:/app
-      - /app/node_modules
-    command: yarn start
+    command: yarn dev
+# command: sh -c "npx sequelize-cli db:migrate:undo:all && npx sequelize-cli db:migrate && yarn dev"
+
+  # api:
+  #   image: public.ecr.aws/h8q2k9k3/thegoat-backend:api-latest
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=postgres://postgres:password@db:5432/mydatabase
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - app-network
+  #   restart: always
+  #   env_file:
+  #     - ./.env
+  #   volumes:
+  #     - ./api:/app
+  #     - /app/node_modules
+  #   command: yarn start
+
   linter:
     build: ./api
     command: yarn lint
@@ -38,6 +61,7 @@ services:
       - api
     networks:
       - app-network
+
 
   db:
     image: postgres:15
@@ -50,10 +74,91 @@ services:
     networks:
       - app-network
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+# Redis Broker Service
+  redis-broker:
+    # https://redis.com/solutions/use-cases/messaging/
+    image: redis:7
+    volumes:
+      - ./workers-backend/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - app-network
+
+# Workers Backend Service (Producer)
+  producer:
+    build:
+        context: ./workers-backend/project
+        dockerfile: Dockerfile
+    command: uvicorn producer:app --reload --host 0.0.0.0 --port 8000
+    volumes:
+      - ./workers-backend/project:/opt/
+    expose:
+      - 8000
+    ports:
+      - '8000:8000'
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+
+    depends_on:
+      - redis-broker
+    
+    networks:
+      - app-network
+
+# Consumer Service
+  consumer:
+    build:
+      context: ./workers-backend/project
+      dockerfile: Dockerfile
+    deploy:
+      # replicas scales containers
+      replicas: 2
+    # concurrency specifies number of worker
+    # purge deletes the broker queue every time it starts up
+    command: celery -A consumer.celery_app worker --loglevel=INFO --purge --concurrency=1
+    volumes:
+      - ./workers-backend/project:/opt/
+    depends_on:
+      - producer
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+    networks:
+      - app-network
+  
+# Dashboard Service
+  dashboard:
+    build:
+      context: ./workers-backend/project
+      dockerfile: Dockerfile
+    command: bash -c "sleep 10; celery -A consumer.celery_app flower --loglevel=INFO --url_prefix=dashboard;"
+    expose:
+      - 5555
+    ports:
+      - '5555:5555'
+    volumes:
+      - ./workers-backend/project:/opt/
+    depends_on:
+      - consumer
+      # - celery_beat
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+    
+    networks:
+      - app-network
 
 networks:
   app-network:
     driver: bridge
 
 volumes:
+  # postgres_data:
   db_data:
