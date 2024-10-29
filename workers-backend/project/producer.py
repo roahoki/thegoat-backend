@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # celery
 from celery_config.tasks import wait_and_return, sum_to_n_job
-from models import Number
+from models import Number, BetInfo
 
 app = FastAPI()
 
@@ -27,6 +27,8 @@ def read_root():
 @app.get("/heartbeat")
 def read_root():
     return {"message": "doing good"}
+
+
 
 # https://docs.celeryq.dev/en/stable/getting-started/first-steps-with-celery.html
 @app.get("/wait_and_return")
@@ -60,18 +62,31 @@ def post_publish_job(number: Number):
 def get_job(job_id: str):
     job = sum_to_n_job.AsyncResult(job_id)
     print(job)
+    # puntito rojo
     return {
-        "ready": job.ready(),
+        "ready": job.ready(),  
         "result": job.result,
     }
 
-@app.post("/sum")
-def post_publish_job_recommendation():
-    pass
+
+
+@app.post("/recommendation")
+def post_publish_job_recommendation(data: BetInfo):
+    job = recommendation.delay(bets_results=data.bets_results, upcoming_fixtures=data.upcoming_fixture)
+    return {
+        "message": "recommendation job published",
+        "job_id": job.id,
+    }
+
 
 @app.get("/recommendation/{job_id}")
 def get_job_recommendation(job_id: str):
-    pass
+    job = recommendation.AsyncResult(job_id)
+   # puntito rojo state ? ready 
+    return {
+        "ready": job.ready(), 
+        "result": job.result,
+    }
 
 
 # MODELO JOB EN POSTGRES

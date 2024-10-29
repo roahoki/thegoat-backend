@@ -1,7 +1,8 @@
 const Router = require('koa-router');
 const router = new Router();
 const axios = require('axios');
-const { Job } = require('../models');
+const { Job, Request, Fixture, Odd, Team, League } = require('../models');
+const { Op } = require("sequelize");
 
 // GET /workers
 // Esta función se encarga de hacer un request al backend de workers para verificar que esté funcionando.
@@ -54,6 +55,8 @@ router.post('/sum', async (ctx) => {
     }
 });
 
+
+
 // GET /workers/:user_id
 // Esta función se encarga de buscar el resultado de un job en la base de datos, por lo que primero se
 // busca el job más reciente con el user_id dado, luego se revisa si state es true, si es true se responde
@@ -67,7 +70,7 @@ router.get('/sum/:user_id', async (ctx) => {
             ctx.status = 400;
             ctx.body = { error: 'Missing required fields: user_id' };
             return;
-        }
+        }    
 
         // Recuperar el job más reciente sin importar su estado
         let job = await Job.findOne({ where: { user_id }, order: [['createdAt', 'DESC']] });
@@ -76,66 +79,155 @@ router.get('/sum/:user_id', async (ctx) => {
             ctx.status = 404;
             ctx.body = { error: 'No job found for the given user_id' };
             return;
-        }
+        }    
 
         // Verificar si el estado del job es true
         if (job.state) {
             ctx.body = { result: job.result };
         } else {
             // Consultar al backend de workers por el estado del job
-            const jobStatus = await checkJobStatusFromBackend(job.job_id);
-
+            const subRoute = 'sum'
+            const jobStatus = await checkJobStatusFromBackend(job.job_id, subRoute);
+            
             // Actualizar el estado del job en la base de datos
             job.state = jobStatus.state ? true : false;
             job.result = jobStatus.result;
             await job.save();
-
+            
             if (jobStatus.state) {
                 ctx.body = { result: job.result };
             } else {
                 ctx.body = { message: 'Job is still in process' };
-            }
-        }
-
+            }    
+        }    
+        
     } catch (error) {
         console.error('Error retrieving job from database:', error);
         ctx.status = 500;
         ctx.body = { error: 'An error occurred while retrieving the job from the database.' };
-    }
-});
+    }    
+});    
 
 // Función para consultar el estado del job en el backend de workers
-async function checkJobStatusFromBackend(jobId) {
+async function checkJobStatusFromBackend(jobId, subRoute) {
     try {
-        const response = await axios.get(`http://producer:8000/sum/${jobId}`);
+        const response = await axios.get(`http://producer:8000/${subRoute}/${jobId}`);
         const { ready, result } = response.data;
         console.log('\n\n\n\n\n\n\n\n#######################################################Response from workers backend:', response.data);
         
-
+        
         if (ready) {
             return { state: true, result: result };
         } else {
             return { state: false};
-        }
+        }    
     } catch (error) {
         console.error('Error checking job status from backend:', error);
         throw new Error('Error checking job status from backend');
-    }
-}
+    }    
+}    
+
+router.post('/recommedation', async (ctx) => {
+    try {
+        const { user_id } = ctx.request.body;
+
+        if (!user_id) {
+            ctx.status = 400;
+            ctx.body = { error: 'Missing required fields: user_id' };
+            return;
+        }
+        const requests = await Request.findAll({
+            where: { 
+                user_id: user_id,
+                status: { [Op.or]: ["won", "lost"] }
+              }
+            });
+
+        const fixtures = await Fixture.findAll({
+                        where: {
+                            status_short: {
+                                [Op.ne]: 'NS'
+                            }
+                        },
+                        include: [
+                            { model: Team, as: "homeTeam" },
+                            { model: Team, as: "awayTeam" },
+                            { model: League, as: "league" },
+                            { model: Odd, as: "odds" },
+                        ],
+                        order: [['updatedAt', 'DESC']],
+                    });
+        
+        const requestBody = { bets_results: requests, upcoming_fixtures: fixtures };
+        console.log(`\n \n \n \n \n \n ${requestBody} \n \n \n \n \n \n`);
+        const response = await axios.post('http://producer:8000/recommendations', requestBody);
 
 
-// POST /workers/recommendation
-// Esta función se encarga de hacer un request al backend de workers para obtener una recomendación.
-router.post('/recommendation', async (ctx) => {
-    console.log(ctx);
-});
+        console.log('Response from workers backend:', response.data.job_id);
+        const job_id = response.data.job_id;
 
+        // agregar una fila a la tabla jobs
+        const job = await Job.create({ job_id, user_id });
+        console.log('\n\n\n\n))))))))))))))))))))))))))))))))))))))))))))))))))))))Job created:');
+        console.log(job);
+        ctx.body = response.data;
+
+    } catch (error) {
+        console.error('Error communicating with workers backend:', error);
+        ctx.status = 500;
+        ctx.body = { error: 'An error occurred while communicating with the workers backend.' };
+    }    
+});    
 
 // GET /workers/recommendation/:user_id
 // Esta función se encarga buscar el resultado de un job de recomendación en la base de datos
 router.get('/recommendation/:user_id', async (ctx) => {
-    console.log(ctx);
-});
+    try {
+        const { user_id } = ctx.params;
+        
+        if (!user_id) {
+            ctx.status = 400;
+            ctx.body = { error: 'Missing required fields: user_id' };
+            return;
+        }    
+        
+        // Recuperar el job más reciente sin importar su estado
+        let job = await Job.findOne({ where: { user_id }, order: [['createdAt', 'DESC']] });
+        if (!job) {
+            ctx.status = 404;
+            ctx.body = { error: 'No job found for the given user_id' };
+            return;
+        }    
+        
+        console.log(`\n \n \n \n \n recommendation/:user_id ${job.job_id}\n \n \n \n \n`);
+        // Verificar si el estado del job es true
+        if (job.state) {
+            ctx.body = { result: job.result };
+        } else {
+            // Consultar al backend de workers por el estado del job
+            const subRoute = 'recommendation'
+            const jobStatus = await checkJobStatusFromBackend(job.job_id, subRoute);
+            
+            // Actualizar el estado del job en la base de datos
+            job.state = jobStatus.state ? true : false;
+            job.result = jobStatus.result;
+            await job.save();
+            
+            if (jobStatus.state) {
+                ctx.body = { result: job.result };
+            } else {
+                ctx.body = { message: 'Job is still in process' };
+            }    
+        }    
+        
+    } catch (error) {
+        console.error('Error retrieving job from database:', error);
+        ctx.status = 500;
+        ctx.body = { error: 'An error occurred while retrieving the job from the database.' };
+    }    
+});    
+
+
 
 
 

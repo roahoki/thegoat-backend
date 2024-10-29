@@ -347,10 +347,12 @@ router.patch("/validate", async (ctx) => {
             }
             // REQUEST DE SUM
             const user_id = request.user_id; //error
-            const number = 5;
-            console.log(`\n\n\n\n REQUESTS DE SUM DESDE REQUESTS \N`);
-            const requestBody = { user_id: user_id, number: number };
-            const response = await axios.post('http://api:3000/workers/sum', requestBody);
+            console.log(`\n\n\n\n REQUESTS DE recommendation DESDE REQUESTS \n`);
+            const requestBody = { user_id: user_id};
+            // const number = 5;
+            // const requestBody = { user_id: user_id, number: number};
+            // const response = await axios.post('http://api:3000/workers/sum', requestBody);
+            const response = await axios.post('http://api:3000/workers/recommendation', requestBody);
 
             console.log(response);
 

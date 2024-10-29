@@ -25,5 +25,6 @@ def sum_to_n_job(number):
 
 
 @shared_task
-def recommendation():
-    pass
+def recommendation(json):
+    result = recommendation_extract_feature(json)
+    return result
