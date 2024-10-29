@@ -23,6 +23,9 @@ API_URL=http://api:3000
 BACKEND_URL=http://localhost:3000
 REDIRECT_URL=http://localhost:5173/purchase-completed
 
+EMAIL_USER=thegoatbet405@gmail.com
+EMAIL_PASSWORD=zqtb uwlp pzdr cxpc
+
 MQTT_HOST = broker.iic2173.org
 MQTT_PORT = 9000
 MQTT_USER = students
@@ -282,3 +285,41 @@ Se crea la ruta en el backend que hace commit a la transacción (utilizando la c
 4. Crear la vista de redirección
 
 En el frontend, se crea la vista de redirección (que es entregada a webpay al crear la transacción). En esta vista, en primer lugar, se llama a una función que, con el token asociado (obtenido de los parámetros) se llama a la ruta /webpay/commit recién creada. Luego de que se haya hecho el commit de la transacción, se muestra una pantalla de compra finalizada, junto con el estado de esta (aprobado, rechazado, anulado), el cual es recibido como mensaje desde /webpay/commit. 
+
+# Pasos Serverless
+
+Para subir la aplicación que crea las boletas a serverless hay que seguir los siguientes pasos:
+
+Prerrequisitos
+- AWS CLI: Configurado con tus credenciales. Puedes configurarlo con aws configure, entregando las credenciales de un usuario con permisos de administrador. Yo le puse arquisis-boletas. 
+**Pd. Tambien se puede iniciar sesión en AWS directamente desde la consola cuando se crea la carpeta serverless sin usar el CLI de AWS, pero a mi no me funcionó y por eso utilice esta forma. 
+
+- Serverless Framework: Instalado globalmente. Ejecuta npm install -g serverless o yarn global add serverless si no lo tienes.
+
+Pasos:
+1. Correr el comando
+```
+serverless
+```
+Luego de correrlo, sigue los pasos para iniciar sesión en serverless y AWS. Selecciona la opción AWS / Node.js / HTTP API, nombra el proyecto y selecciona la opción Skip Adding an App. Ahí se te creará una carpeta con todos los archivos necesarios. La nuestra está en el siguiente repositorio: https://github.com/eiacobelli/serverless-receipts
+
+2. Modificar los archivos con lo siguiente:
+- handler.js: recibe los datos que deben ir en la boleta, llama a createInvoice (crea el pdf usando pdfkit) y guarda el pdf en el bucket creado en s3 (en nuestro caso se llama boletas-thegoatbet). Luego, retorna la url del pdf guardado en s3. Es muy importante que en los headers del return tenga la información del cors.
+- serverless.yml: en provider se asociado a la API gateway que ya tenemos y da permiso para poner objetos en el bucket, y en functions debe tener la función generateReceipt, que se asocia al handler. Ahí se define como un post en la ruta receipts/{request_id}. Es importante poner cors: true. 
+
+3. Correr la aplicación
+
+Si iniciaste sesión correctamente en AWS desde la consola en el paso 1, debes correr:
+```
+serverless deploy
+```
+Si no iniciaste sesión correctamente (mi caso) y creaste tu usuario con el CLI de AWS, debes correr:
+```
+serverless deploy serverless deploy --aws-profile arquisis-boletas
+```
+
+Esto creará el endpoint en API Gateway y retornara el link al que debes llamar (en este caso hacer el POST) cuando quieres que se ejecute la función. 
+
+4. Llamar al endpoint desde la app:
+
+En nuestro caso, en el frontend cuando se presiona Generar Boleta se hace una llamada al link del serverless, y se redirige al usuario a la url del pdf en el bucket. 
