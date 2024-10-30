@@ -66,36 +66,36 @@ function connectToBroker() {
             if (parsedMessage.group_id != '15') {
                 a = 1;
             } else {   
-            console.log("\n\nProcesando mensaje de fixtures/validation...\n\n");
-            console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
-            
-            const apiEndpoint = `${api}/requests/validate`;
-            let attempts = 0;
-            const maxRetries = 3;
+                console.log("\n\nProcesando mensaje de fixtures/validation...");
+                console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
         
-            const sendValidation = () => {
-                axios.patch(apiEndpoint, parsedMessage, {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => {
-                    // console.log(`Message sent to API for topic ${topic}:`, response.data);
-                    console.log('VALIDATION SENT');
-
-                })
-                .catch(error => {
-                    console.error(`Error sending message to API for topic ${topic}:`, error);
-                    attempts++;
-                    if (attempts < maxRetries) {
-                        console.log(`Retrying... Attempts left: ${maxRetries - attempts}`);
-                        setTimeout(sendValidation, 1000);
-                    }
-                });}
-            };
+                const apiEndpoint = `${api}/requests/validate`;
+                let attempts = 0;
+                const maxRetries = 3;
         
-            sendValidation();
-
+                // Definición de sendValidation dentro del mismo bloque
+                const sendValidation = () => {
+                    axios.patch(apiEndpoint, parsedMessage, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        console.log('VALIDATION SENT');
+                    })
+                    .catch(error => {
+                        console.error(`Error sending message to API for topic ${topic}:`, error);
+                        attempts++;
+                        if (attempts < maxRetries) {
+                            console.log(`Retrying... Attempts left: ${maxRetries - attempts}`);
+                            setTimeout(sendValidation, 1000);
+                        }
+                    });
+                };
+        
+                sendValidation();
+            }
+        
         } else if (topic === "fixtures/requests") {
             // console.log("\n\n\n\nProcesando mensaje de fixtures/requests...");
             apiEndpoint = `${api}/requests`;

@@ -493,28 +493,29 @@ router.post("/history", async (ctx) => {
 
 router.get('/bond', async (ctx) => {
     try {
-      const fixtures = await Fixture.findAll(); // Assuming you're using Sequelize or similar ORM
+        console.log('Fetching bonds...');  
+        const fixtures = await Fixture.findAll(); // Assuming you're using Sequelize or similar ORM
   
-      // Extract the relevant data
-      const data = fixtures.map(fixture => ({
-        fixture_id: fixture.id, // Assuming 'id' is the fixture ID field
-        available_bonds: fixture.available_bonds // Assuming 'available_bonds' is a field in the fixture
-      }));
-  
-      // Return the data as JSON
-      ctx.body = {
-        success: true,
-        data: data
-      };
-    } catch (error) {
-      // Handle any errors
-      ctx.status = 500;
-      ctx.body = {
-        success: false,
-        message: 'Failed to fetch fixtures',
-        error: error.message
-      };
-    }
-  });
+        // Extract the relevant data
+        const data = fixtures.map(fixture => ({
+            fixture_id: fixture.id, // Assuming 'id' is the fixture ID field
+            available_bonds: fixture.available_bonds // Assuming 'available_bonds' is a field in the fixture
+        }));
+    
+        // Return the data as JSON
+        ctx.body = {
+            success: true,
+            data: data
+        };
+        } catch (error) {
+        // Handle any errors
+        ctx.status = 500;
+        ctx.body = {
+            success: false,
+            message: 'Failed to fetch fixtures',
+            error: error.message
+        };
+        }
+    });
 
-module.exports = router;
+    module.exports = router;
