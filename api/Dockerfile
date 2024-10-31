@@ -1,23 +1,26 @@
-# Usar una imagen oficial de Node.js como base
+# Use official Node.js image as base
 FROM node:22.6.0
 
-# Crear un directorio de trabajo dentro del contenedor
+# Create working directory
 WORKDIR /app
 
-# Copiar los archivos package.json y yarn.lock para instalar dependencias
+# Copy package files
 COPY package.json yarn.lock ./
 
-# Instalar las dependencias usando Yarn
+# Install dependencies
 RUN yarn install
 
-# Copiar el resto de los archivos de la aplicación al contenedor
+# Add node_modules/.bin to PATH
+ENV PATH /app/node_modules/.bin:$PATH
+
+# Copy the rest of the application
 COPY . .
 
 COPY wait-for-it.sh /wait-for-it.sh
 RUN chmod +x /wait-for-it.sh
-# Exponer el puerto en el que corre la API
+
+# Expose API port
 EXPOSE 3000
 
-# Comando para ejecutar las migraciones y luego iniciar la API
-# CMD ["/wait-for-it.sh","sh", "-c", "npx sequelize-cli db:migrate && yarn dev"]
+# Run migrations and start API
 CMD ["/wait-for-it.sh", "db:5432", "--", "sh", "-c", "npx sequelize-cli db:migrate && yarn dev"]

@@ -326,19 +326,31 @@ router.patch("/validate", async (ctx) => {
                 return;
             }
 
-            // Solo manejar la billetera si es wallet (true)
-            if (request.wallet) {
-                // Si es wallet (true), descontar si se acepta y manejar fondo insuficiente
-                if (valid) {
-                    user.wallet -= 1000 * request.quantity;
-                    if (user.wallet < 0) {
-                        await t.rollback(); 
-                        ctx.status = 402;
-                        ctx.body = { error: "Insufficient funds in the user's wallet." };
-                        return;
-                    }
+        // Solo manejar la billetera si es wallet (true)
+        if (request.wallet) {
+            // Si es wallet (true), descontar si se acepta y manejar fondo insuficiente
+            if (valid) {
+                user.wallet -= 1000 * request.quantity;
+                if (user.wallet < 0) {
+                    await t.rollback(); 
+                    ctx.status = 402;
+                    ctx.body = { error: "Insufficient funds in the user's wallet." };
+                    return;
+                }
+                try {
+
+                    const user_id = request.user_id; //error
+                    const requestBody = { user_id: user_id};
+                    const response = await axios.post('http://api:3000/workers/recommendation', requestBody);
+                    console.log(response);
                     await user.save({ transaction: t });
-                } else {
+                    await t.commit(); // Confirmar la transacción
+                } catch (error) {
+                    await t.rollback(); // Revertir la transacción en caso de error
+                    ctx.status = 500;
+                    ctx.body = { error: "Error saving user wallet balance." };
+                    return;
+                }}  else {
                     // Si la transacción con wallet fue rechazada, no ajustar billetera
                     console.log("Wallet payment rejected, no balance changes.");
                 }

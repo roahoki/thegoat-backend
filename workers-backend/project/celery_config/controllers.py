@@ -9,17 +9,21 @@ def get_odd_value(fixture_id, team, old_fixtures):
     try:
         for fixture in old_fixtures:
             if fixture['id'] == fixture_id:
-                if fixture['homeTeam']['name'] == team:
+
+                if (fixture['homeTeam']['name'] == team) or (team == 'Team A'):
                     odds_value_key = 'Home'
 
                 elif fixture['awayTeam']['name'] == team:
                     odds_value_key = 'Away'
                 
                 for odd in fixture['odds']:
-                    if odd['value'] == odds_value_key:
+                    if odd.get('value') == odds_value_key:
+                        if not (odd['odd']):
+                            odd['odd'] = 0
                         return float(odd['odd']) 
     except (KeyError, IndexError, ValueError ) as err:
         return 0
+    return 0
 
 def recommendation_extract_feature(bets_results, upcoming_fixtures, old_fixtures):
     response_dict = {}
