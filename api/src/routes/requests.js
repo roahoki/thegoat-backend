@@ -530,4 +530,40 @@ router.get('/bond', async (ctx) => {
         }
     });
 
+    router.patch('/request', async (ctx) => {
+        const { request_id, status } = ctx.request.body; // Extract request_id and status from the request body
+      
+        // Validate that the necessary data is present
+        if (!request_id || !status) {
+          ctx.status = 400;
+          ctx.body = { error: 'request_id and status are required.' };
+          return;
+        }
+      
+        try {
+          // Find the Request by request_id
+          const request = await Request.findOne({ where: { request_id } });
+      
+          // If the Request does not exist, respond with a 404
+          if (!request) {
+            ctx.status = 404;
+            ctx.body = { error: 'Request not found.' };
+            return;
+          }
+      
+          // Update the status field of the Request
+          request.status = status;
+          await request.save();
+      
+          // Send a response with the updated Request
+          ctx.status = 200;
+          ctx.body = { message: 'Request status updated successfully.', request };
+        } catch (error) {
+          console.error(error);
+          ctx.status = 500;
+          ctx.body = { error: 'An error occurred while updating the request status.' };
+        }
+      });
+      
+
     module.exports = router;

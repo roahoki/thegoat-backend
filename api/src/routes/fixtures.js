@@ -207,12 +207,15 @@ router.get("/data/:id", async (ctx) => {
 
     const fixture = await Fixture.findOne({
         where: { id },
-        include: [
-            { model: Team, as: "homeTeam" },
-            { model: Team, as: "awayTeam" },
-            { model: League, as: "league" },
-        ],
-    });
+            include: [
+                { model: Team, as: "homeTeam" },
+                { model: Team, as: "awayTeam" },
+                { model: League, as: "league" },
+                { model: Goal, as: "goals" },
+                { model: Odd, as: "odds" },
+            ],
+        });
+
 
     if (!fixture) {
         ctx.status = 404;
