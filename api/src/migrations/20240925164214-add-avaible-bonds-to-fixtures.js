@@ -2,7 +2,7 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.addColumn('Fixtures', 'bonos_disponibles', {
+    await queryInterface.addColumn('Fixtures', 'available_bonds', {
       type: Sequelize.INTEGER,
       defaultValue: 40,
       allowNull: false
@@ -10,7 +10,8 @@ module.exports = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.removeColumn('Fixtures', 'bonos_disponibles');
+    console.log(Sequelize);
+    await queryInterface.removeColumn('Fixtures', 'available_bonds');
   }
 };
 

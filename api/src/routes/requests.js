@@ -1,14 +1,12 @@
 const Router = require("koa-router");
-const { Request, Usuario, Fixture, ExternalRequest, Team, Odd } = require("../models");
+const { Request, User, Fixture, ExternalRequest, Team, Odd } = require("../models");
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
 const axios = require('axios');
-const fs = require('fs');
-const dotenv = require('dotenv');
-const moment = require('moment');
-const db = require("../models");
+const { sendConfirmationEmail } = require('../config/mailer');
 
+const dotenv = require('dotenv');
 // Cargar variables de entorno desde el archivo .env
 dotenv.config();
 
@@ -21,6 +19,7 @@ const mqttClient = mqtt.connect({
 });
 
 mqttClient.on("error", (err) => {
+    console.log(err);
     mqttClient.end();
 });
 
@@ -34,26 +33,29 @@ async function reservarBonos(fixture_id, quantity, transaction) {
     }
 
     // Verificar si hay suficientes bonos disponibles
-    if (fixture.bonos_disponibles < quantity) {
+    if (fixture.available_bonds < quantity) {
         throw new Error("Not enough bonos available");
     }
 
     // Reservar los bonos reduciendo la cantidad disponible
-    fixture.bonos_disponibles -= quantity;
+    fixture.available_bonds -= quantity;
     await fixture.save({ transaction });
 }
 
 
 // Endpoint para crear una nueva request
 router.post("/", async (ctx) => {
-    const t = await Request.sequelize.transaction();  // Iniciar transacción
+    const t = await Request.sequelize.transaction();
 
     try {
-        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, usuarioId, status, request_id: incoming_request_id } = ctx.request.body;
 
-        if (!group_id || !fixture_id || !league_name || !round || !date || !result || !datetime || typeof quantity !== 'number' || quantity <= 0) {
+        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id, wallet } = ctx.request.body;
+
+        if (!group_id || !fixture_id || !league_name || !round || !date || !datetime || typeof wallet !== 'boolean' || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
-            ctx.body = { message: "Invalid request format." };
+            const print_message = ctx.request.body;
+            ctx.body = { message: print_message };
+            await t.commit();
             return;
         }
 
@@ -67,11 +69,12 @@ router.post("/", async (ctx) => {
             country = ipResponse.data.country || "unknown";
         } catch (error) {
             console.error("Error fetching location:", error);
+            console.log(status);
         }
 
         let request_id;
       
-        if (group_id == '15' && usuarioId && typeof request_id === 'undefined') {
+        if (group_id == '15' && user_id && typeof request_id === 'undefined') {
 
             // Generar un nuevo UUID para la request interna
             request_id = uuidv4();
@@ -92,7 +95,8 @@ router.post("/", async (ctx) => {
                 datetime,
                 quantity,
                 seller: 0,  // Siempre es 0
-                usuarioId,
+                wallet,
+                user_id,
                 status: "sent",
                 ip_address: clientIP,  // Agregar IP del cliente
                 location: `${city}, ${region}, ${country}`
@@ -110,10 +114,11 @@ router.post("/", async (ctx) => {
                 round,
                 date,
                 result,
-                deposit_token: "",  // Siempre vacío
+                deposit_token: deposit_token || "",
                 datetime,
                 quantity,
-                seller: 0
+                seller: 0,
+                wallet
             };
 
             // Publicar el mensaje en el canal fixtures/requests
@@ -128,6 +133,30 @@ router.post("/", async (ctx) => {
                     ctx.body = { message: "Request successfully created and message sent to broker!", request: newRequest };
                 }
             });
+
+            // Si es Webpay, manejar el flujo de Webpay
+            if (!wallet) {
+                try {
+                const webpayResponse = await axios.post(`${process.env.BACKEND_URL}/webpay/create`, {
+                    request_id: newRequest.request_id,
+                    quantity: newRequest.quantity
+                });
+
+                console.log(request_id, quantity, "enviando")
+        
+                // Devuelve la URL de Webpay al frontend
+                ctx.body = { token: webpayResponse.data.token, url: webpayResponse.data.url };
+                ctx.status = 201;
+                } catch (error) {
+                console.error('Error initiating Webpay transaction:', error);
+                ctx.status = 500;
+                ctx.body = { message: "Error initiating Webpay transaction." };
+                }
+            } else {
+                // Si es wallet, no hacer Webpay
+                ctx.body = { message: "Request created and paid with wallet.", request_id: newRequest.request_id };
+                ctx.status = 201;
+            }
     
         } else if (group_id !== '15') {
             // Si el group_id no es 15, manejar como ExternalRequest
@@ -158,11 +187,11 @@ router.post("/", async (ctx) => {
             ctx.body = { message: "External request successfully created!", externalRequest };
 
         } else {
-            // Si el group_id es 15, pero la request ya existe o no tiene user_id
+            // Si el group_id es 15, pero la request ya existe o no tiene user id
             console.log("Request ID:", incoming_request_id);
             console.log("Group ID:", group_id);
             ctx.status = 400;
-            ctx.body = { message: "Either user_id is missing, or the request already exists." };
+            ctx.body = { message: "Either user id is missing, or the request already exists." };
         }
 
     } catch (error) {
@@ -184,7 +213,7 @@ router.get("/", async (ctx) => {
 
     let where = {};
 
-    // Filtro por user_id si es proporcionado
+    // Filtro por user id si es proporcionado
     if (user_id) {
         where.user_id = user_id;
     }
@@ -201,7 +230,7 @@ router.get("/", async (ctx) => {
         // Buscar las requests con los filtros aplicados
         const requests = await Request.findAndCountAll({
             where,
-            include: [{ model: Usuario, as: 'usuario' }],  // Incluir datos del usuario si es necesario
+            include: [{ model: User, as: 'User' }],  // Incluir datos del User si es necesario
             order: [['createdAt', 'DESC']],
             limit,
             offset: (page - 1) * limit,
@@ -224,10 +253,17 @@ router.get("/", async (ctx) => {
 router.get("/:id", async (ctx) => {
     const { id } = ctx.params;
 
+    if (!id) {
+        ctx.status = 400;
+        ctx.body = { error: "Request ID is required" };
+        return;
+    }
+
     try {
         const request = await Request.findOne({
             where: { request_id: id },
-            include: [{ model: Usuario, as: 'usuario' }]
+            include: [{ model: User, as: 'User' }]
+
         });
 
         if (!request) {
@@ -244,30 +280,30 @@ router.get("/:id", async (ctx) => {
     }
 });
 
-// Endpoint para manejar la validación de las requests
+
 router.patch("/validate", async (ctx) => {
 
     let t;
 
-    try { 
+    try {
         const { request_id, group_id, seller, valid } = ctx.request.body;
-        // Start transaction
+        console.log(seller);
         t = await Request.sequelize.transaction();
 
-        // Determine which model to use
         const requestModel = group_id == "15" ? Request : ExternalRequest;
 
-        // Find the request
+        // Busca la request correspondiente (interna o externa)
         const request = await requestModel.findOne({ where: { request_id }, transaction: t });
         if (!request) {
+            await t.rollback();
             ctx.status = 404;
             ctx.body = { error: `${group_id == '15' ? 'Request' : 'External Request'} not found` };
             return;
         }
 
-        // Find the associated fixture
         const fixture = await Fixture.findOne({ where: { id: request.fixture_id }, transaction: t });
         if (!fixture) {
+            await t.rollback();
             ctx.status = 404;
             ctx.body = "Fixture not found";
             return;
@@ -275,37 +311,83 @@ router.patch("/validate", async (ctx) => {
 
         const newStatus = valid ? "accepted" : "rejected";
 
-        // Handle rejected requests
+        // Si la request es rechazada, se devuelven los bonos disponibles al fixture
         if (!valid) {
-            fixture.bonos_disponibles += request.quantity;
+            fixture.available_bonds += request.quantity;
             await fixture.save({ transaction: t });
         }
-
-        // Handle accepted requests for group 15
-        if (group_id == "15" && valid) {
-            console.log("ENtre al if de validate grupo 15")
-            const usuario = await Usuario.findOne({ where: { id: request.usuarioId }, transaction: t });
-            console.log("Usuario", usuario)
-            if (!usuario) {
+        // Manejar requests aceptadas o rechazadas para el grupo 15
+        if (group_id == "15") {
+            const user = await User.findOne({ where: { id: request.user_id }, transaction: t });
+            if (!user) {
+                await t.rollback();
                 ctx.status = 404;
-                ctx.body = { error: "Usuario not found" };
+                ctx.body = { error: "user not found" };
                 return;
             }
 
-            usuario.billetera -= 1000 * request.quantity;
-            if (usuario.billetera < 0) {
-                ctx.status = 402;
-                ctx.body = { error: "Insufficient funds in the user's billetera." };
-                return;
-            }
+        // Solo manejar la billetera si es wallet (true)
+        if (request.wallet) {
+            // Si es wallet (true), descontar si se acepta y manejar fondo insuficiente
+            if (valid) {
+                user.wallet -= 1000 * request.quantity;
+                if (user.wallet < 0) {
+                    await t.rollback(); 
+                    ctx.status = 402;
+                    ctx.body = { error: "Insufficient funds in the user's wallet." };
+                    return;
+                }
+                try {
 
-            await usuario.save({ transaction: t });
+                    const user_id = request.user_id; //error
+                    const requestBody = { user_id: user_id};
+                    const response = await axios.post('http://api:3000/workers/recommendation', requestBody);
+                    console.log(response);
+                    await user.save({ transaction: t });
+                    await t.commit(); // Confirmar la transacción
+                } catch (error) {
+                    await t.rollback(); // Revertir la transacción en caso de error
+                    ctx.status = 500;
+                    ctx.body = { error: "Error saving user wallet balance." };
+                    return;
+                }}  else {
+                    // Si la transacción con wallet fue rechazada, no ajustar billetera
+                    console.log("Wallet payment rejected, no balance changes.");
+                }
+
+                const subject = valid ? "Payment confirmation" : "Payment rejection";
+                const text = `Hi ${user.name}, your wallet payment for request with id: ${request_id} has been ${newStatus}. Thank you!.`;
+                try {
+                    await sendConfirmationEmail(user.email, subject, text);
+                  } catch (error) {
+                    console.error("Error sending confirmation email:", error);
+                  }
+
+            } else {
+                // Si es Webpay (wallet = false), no hacer nada con la billetera
+                console.log("Webpay payment, no changes to wallet.");
+        
+                const user_id = request.user_id; //error
+                const requestBody = { user_id: user_id};
+                const response = await axios.post('http://api:3000/workers/recommendation', requestBody);
+    
+                console.log(response);
+    
+                await user.save({ transaction: t });
+                const subject = valid ? "Payment confirmation" : "Payment rejection";
+                const text = `Hi ${user.name}, your webpay payment for request with id: ${request_id} has been ${newStatus}. Thank you!.`;
+                try {
+                    await sendConfirmationEmail(user.email, subject, text);
+                  } catch (error) {
+                    console.error("Error sending confirmation email:", error);
+                  }
+            }
         }
 
-        // Update request status
+        // Actualizar el estado de la request, independientemente de si es wallet o Webpay
         await request.update({ status: newStatus }, { transaction: t });
 
-        // Commit transaction
+        // Hacer commit de la transacción
         await t.commit();
 
         ctx.status = 200;
@@ -313,15 +395,15 @@ router.patch("/validate", async (ctx) => {
 
     } catch (error) {
         console.error("Error validating request:", error);
+
+        // Hacer rollback en caso de error
+        if (t) await t.rollback();
+        
         ctx.status = 500;
         ctx.body = { message: "An error occurred while validating the request." };
-    } finally {
-        // Ensure transaction is rolled back if it wasn't committed
-        if (t && !t.finished) {
-            await t.rollback();
-        }
     }
 });
+
 
 // Endpoint para manejar el mensaje del canal history
 router.post("/history", async (ctx) => {
@@ -381,10 +463,10 @@ router.post("/history", async (ctx) => {
                     const newStatus = hasWon ? "won" : "lost";
                     await request.update({ status: newStatus });
 
-                    // Si ganó la apuesta, actualizar la billetera del usuario
+                    // Si ganó la apuesta, actualizar la wallet del user
                     if (hasWon) {
-                        const usuario = await Usuario.findOne({ where: { id: request.usuarioId } });
-                        if (usuario) {
+                        const user = await User.findOne({ where: { id: request.user_id } });
+                        if (user) {
                             // Obtener los odds desde la fixture
                             const oddsArray = dbFixture.odds || [];
                             const oddsMatchWinner = oddsArray.find(odd => odd.dataValues.name === "Match Winner");
@@ -402,9 +484,9 @@ router.post("/history", async (ctx) => {
 
                             if (winningOdd) {
                                 const winnings = 1000 * request.quantity * parseFloat(winningOdd.odd); // Calcular las ganancias
-                                console.log("AGREGANDO PLATA A LA BILLETERA")
-                                usuario.billetera += winnings; // Agregar ganancias a la billetera
-                                await usuario.save(); // Guardar los cambios en la billetera
+                                console.log("AGREGANDO PLATA A LA wallet")
+                                user.wallet += winnings; // Agregar ganancias a la wallet
+                                await user.save(); // Guardar los cambios en la wallet
                             }
                         }
                     }
@@ -423,28 +505,65 @@ router.post("/history", async (ctx) => {
 
 router.get('/bond', async (ctx) => {
     try {
-      const fixtures = await Fixtures.findAll(); // Assuming you're using Sequelize or similar ORM
+        console.log('Fetching bonds...');  
+        const fixtures = await Fixture.findAll(); // Assuming you're using Sequelize or similar ORM
   
-      // Extract the relevant data
-      const data = fixtures.map(fixture => ({
-        fixture_id: fixture.id, // Assuming 'id' is the fixture ID field
-        bonos_disponibles: fixture.bonos_disponibles // Assuming 'bonos_disponibles' is a field in the fixture
-      }));
-  
-      // Return the data as JSON
-      ctx.body = {
-        success: true,
-        data: data
-      };
-    } catch (error) {
-      // Handle any errors
-      ctx.status = 500;
-      ctx.body = {
-        success: false,
-        message: 'Failed to fetch fixtures',
-        error: error.message
-      };
-    }
-  });
+        // Extract the relevant data
+        const data = fixtures.map(fixture => ({
+            fixture_id: fixture.id, // Assuming 'id' is the fixture ID field
+            available_bonds: fixture.available_bonds // Assuming 'available_bonds' is a field in the fixture
+        }));
+    
+        // Return the data as JSON
+        ctx.body = {
+            success: true,
+            data: data
+        };
+        } catch (error) {
+        // Handle any errors
+        ctx.status = 500;
+        ctx.body = {
+            success: false,
+            message: 'Failed to fetch fixtures',
+            error: error.message
+        };
+        }
+    });
 
-module.exports = router;
+    router.patch('/request', async (ctx) => {
+        const { request_id, status } = ctx.request.body; // Extract request_id and status from the request body
+      
+        // Validate that the necessary data is present
+        if (!request_id || !status) {
+          ctx.status = 400;
+          ctx.body = { error: 'request_id and status are required.' };
+          return;
+        }
+      
+        try {
+          // Find the Request by request_id
+          const request = await Request.findOne({ where: { request_id } });
+      
+          // If the Request does not exist, respond with a 404
+          if (!request) {
+            ctx.status = 404;
+            ctx.body = { error: 'Request not found.' };
+            return;
+          }
+      
+          // Update the status field of the Request
+          request.status = status;
+          await request.save();
+      
+          // Send a response with the updated Request
+          ctx.status = 200;
+          ctx.body = { message: 'Request status updated successfully.', request };
+        } catch (error) {
+          console.error(error);
+          ctx.status = 500;
+          ctx.body = { error: 'An error occurred while updating the request status.' };
+        }
+      });
+      
+
+    module.exports = router;

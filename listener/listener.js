@@ -15,7 +15,7 @@ const protocol = process.env.MQTT_PROTOCOL;
 const api = process.env.API_URL;
 
 function connectToBroker() {
-    const clientId = "client_THEGOAT";
+    const clientId = "client_THEGOATs";
     const hostURL = `${protocol}://${mqttHost}:${port}`;
 
     const options = {
@@ -33,7 +33,7 @@ function connectToBroker() {
     mqttClient = mqtt.connect(hostURL, options);
 
     mqttClient.on("error", (err) => {
-        console.log("You had an Error: ", err);
+        // console.log("You had an Error: ", err);
         mqttClient.end();
     });
 
@@ -47,7 +47,7 @@ function connectToBroker() {
         let apiEndpoint = '';
 
         if (topic === "fixtures/info") {
-            console.log("Procesando mensaje de fixtures/info...");
+            // console.log("Procesando mensaje de fixtures/info...");
             apiEndpoint = `${api}/fixtures/update`;
             axios.post(apiEndpoint, parsedMessage, {
                 headers: {
@@ -55,74 +55,81 @@ function connectToBroker() {
                 }
             })
             .then(response => {
-                // console.log(`Message sent to API for topic ${topic}:`, response.data);
-                console.log('update fixtures success');
+                console.log('.')
+                // // console.log(`Message sent to API for topic ${topic}:`, response.data);
+                // console.log('update fixtures success');
             })
             .catch(error => {
-                console.error(`Error sending message to API for topic ${topic}:`, error);
+                console.log('.')
+                // console.error(`Error sending message to API for topic ${topic}:`);
             });
             
         } else if (topic === "fixtures/validation") {
-            console.log("\n\nProcesando mensaje de fixtures/validation...\n\n");
-            console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
-            
-            const apiEndpoint = `${api}/requests/validate`;
-            let attempts = 0;
-            const maxRetries = 3;
+            if (parsedMessage.group_id != '15') {
+                a = 1;
+            } else {   
+                // console.log("\n\nProcesando mensaje de fixtures/validation...");
+                // // console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
         
-            const sendValidation = () => {
-                axios.patch(apiEndpoint, parsedMessage, {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => {
-                    // console.log(`Message sent to API for topic ${topic}:`, response.data);
-                    console.log('VALIDATION SENT');
-
-                })
-                .catch(error => {
-                    console.error(`Error sending message to API for topic ${topic}:`, error);
-                    attempts++;
-                    if (attempts < maxRetries) {
-                        console.log(`Retrying... Attempts left: ${maxRetries - attempts}`);
-                        setTimeout(sendValidation, 1000);
-                    }
-                });
-            };
+                const apiEndpoint = `${api}/requests/validate`;
+                let attempts = 0;
+                const maxRetries = 0;
         
-            sendValidation();
-
+                // Definición de sendValidation dentro del mismo bloque
+                const sendValidation = () => {
+                    axios.patch(apiEndpoint, parsedMessage, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        // console.log('VALIDATION SENT');
+                        console.log('.')
+                    })
+                    .catch(error => {
+                        // // console.error(`AQUI VAN LOS RETRIES Error sending message to API for topic ${topic}:`);
+                        attempts++;
+                        if (attempts < maxRetries) {
+                            // console.log(`Retrying... Attempts left: ${maxRetries - attempts}`);
+                            setTimeout(sendValidation, 1000);
+                        }
+                    });
+                };
+        
+                sendValidation();
+            }
+        
         } else if (topic === "fixtures/requests") {
-            // console.log("\n\n\n\nProcesando mensaje de fixtures/requests...");
+            // // console.log("\n\n\n\nProcesando mensaje de fixtures/requests...");
             apiEndpoint = `${api}/requests`;
         
-            if (parsedMessage.group_id == '23') {
+            if (parsedMessage.group_id != '15') {
                 a = 1;
-            } else {
-                console.log("Procesando mensaje de fixtures/requests... NO 23");
-                
+            } else {                
+
                 axios.post(apiEndpoint, parsedMessage, {
                     headers: {
                         'Content-Type': 'application/json'
                     }
                 })
                 .then(response => {
-                    console.log(`Message sent to API for topic ${topic}:`, response.data);
-                    // console.log('Request success');
+                    // console.log(`Message sent to API for topic ${topic}:`, response.data);
+                    // // console.log('Request success');
+                    console.log('.')
                 })
                 .catch(error => {
                     if (error.response && error.response.data && 
                         (error.response.data.message === "Either user_id is missing, or the request already exists.")) {
-                        console.log("Ignoring error because it is our request coming back.");
+                        // console.log("Ignoring error because it is our request coming back.");
                         return; // Salir del bloque catch sin hacer nada
                     }
-                    console.error(`Error sending message to API for topic ${topic}:`, error);
+                    console.log('.')
+                    // console.error(`Error sending message to API for topic ${topic}`);
                 });
             }
 
         } else if (topic === "fixtures/history") {
-            console.log("Procesando mensaje de fixtures/history...");
+            // console.log("Procesando mensaje de fixtures/history...");
             apiEndpoint = `${api}/requests/history`;
             axios.post(apiEndpoint, parsedMessage, {
                 headers: {
@@ -130,15 +137,15 @@ function connectToBroker() {
                 }
             })
             .then(response => {
-                // console.log(`Message sent to API for topic ${topic}:`, response.data);
+                // // console.log(`Message sent to API for topic ${topic}:`, response.data);
                 console.log('History success');
             })
             .catch(error => {
-                console.error(`Error sending message to API for topic ${topic}:`, error);
+                // console.error(`Error sending message to API for topic ${topic}`);
             });
 
         }else {
-            console.log("Tópico no reconocido:", topic);
+            // console.log("Tópico no reconocido:", topic);
             return;  // Salir si el tópico no es reconocido
         }
 
@@ -149,13 +156,13 @@ function connectToBroker() {
 }
 
 function subscribeToTopic(topic) {
-    console.log(`Subscribing to Topic: ${topic}`);
+    // console.log(`Subscribing to Topic: ${topic}`);
 
     mqttClient.subscribe(topic, { qos: 0 }, (err) => {
         if (err) {
-            console.log(`Failed to subscribe to topic: ${topic}`);
+            // console.log(`Failed to subscribe to topic: ${topic}`);
         } else {
-            console.log(`Successfully subscribed to topic: ${topic}`);
+            // console.log(`Successfully subscribed to topic: ${topic}`);
         }
     });
 }

@@ -30,7 +30,7 @@ module.exports = {
       },
       result: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       deposit_token: {
         type: Sequelize.STRING,
@@ -54,7 +54,7 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Usuarios',  // Referencia a la tabla Usuarios
+          model: 'Users',
           key: 'id'
         }
       },
@@ -74,6 +74,7 @@ module.exports = {
     });
   },
   down: async (queryInterface, Sequelize) => {
+    console.log(Sequelize);
     await queryInterface.dropTable('Requests');
   }
 };

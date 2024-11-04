@@ -2,16 +2,22 @@
 const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  class Usuario extends Model {
+  class User extends Model {
     static associate(models) {
-      Usuario.hasMany(models.Request, {
-        foreignKey: 'usuarioId', // Foreign key
+
+      User.hasMany(models.Job, {
+        foreignKey: 'user_id', // Foreign key in Job model
+        as: 'jobs'             // Alias for the association
+      });
+      User.hasMany(models.Request, {
+        foreignKey: 'user_id', // Foreign key
+
         as: 'requests'            // Pluralized 'request' to 'requests'
       });
     }
   }
 
-  Usuario.init(
+  User.init(
     {
       id: {
         type: DataTypes.INTEGER,
@@ -19,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         autoIncrement: true, // Added autoIncrement
       },
-      billetera: {
+      wallet: {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0, // Added default value
@@ -43,11 +49,11 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       sequelize,
-      modelName: 'Usuario',
+      modelName: 'User',
       timestamps: false, // If you don't need createdAt and updatedAt
     }
   );
 
-  return Usuario;
+  return User;
 };
 

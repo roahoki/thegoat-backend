@@ -2,7 +2,7 @@ const Router = require("koa-router");
 const { Fixture, Team, League, Goal, Odd } = require("../models"); 
 const router = new Router();
 const { Op } = require("sequelize");
-const axios = require('axios');
+
 
 // Endpoint para recibir los datos del listener
 router.post("/update", async (ctx) => {
@@ -207,12 +207,15 @@ router.get("/data/:id", async (ctx) => {
 
     const fixture = await Fixture.findOne({
         where: { id },
-        include: [
-            { model: Team, as: "homeTeam" },
-            { model: Team, as: "awayTeam" },
-            { model: League, as: "league" },
-        ],
-    });
+            include: [
+                { model: Team, as: "homeTeam" },
+                { model: Team, as: "awayTeam" },
+                { model: League, as: "league" },
+                { model: Goal, as: "goals" },
+                { model: Odd, as: "odds" },
+            ],
+        });
+
 
     if (!fixture) {
         ctx.status = 404;
@@ -221,6 +224,57 @@ router.get("/data/:id", async (ctx) => {
     }
 
     ctx.body = fixture;
+});
+
+
+router.get("/all", async (ctx) => {
+    try {
+        const fixtures = await Fixture.findAll({
+            include: [
+                { model: Team, as: "homeTeam" },
+                { model: Team, as: "awayTeam" },
+                { model: League, as: "league" },
+                { model: Goal, as: "goals" },
+                { model: Odd, as: "odds" },
+            ],
+            order: [['updatedAt', 'DESC']],
+        });
+
+        ctx.status = 200;
+        ctx.body = fixtures;
+    } catch (error) {
+        console.error("Error fetching fixtures:", error);
+        ctx.status = 500;
+        ctx.body = { message: "An error occurred while fetching fixtures." };
+    }
+});
+
+
+router.get("/started", async (ctx) => {
+    try {
+        const fixtures = await Fixture.findAll({
+            where: {
+                status_short: {
+                    [Op.ne]: 'NS'
+                }
+            },
+            include: [
+                { model: Team, as: "homeTeam" },
+                { model: Team, as: "awayTeam" },
+                { model: League, as: "league" },
+                { model: Goal, as: "goals" },
+                { model: Odd, as: "odds" },
+            ],
+            order: [['updatedAt', 'DESC']],
+        });
+
+        ctx.status = 200;
+        ctx.body = fixtures;
+    } catch (error) {
+        console.error("Error fetching fixtures:", error);
+        ctx.status = 500;
+        ctx.body = { message: "An error occurred while fetching fixtures." };
+    }
 });
 
 module.exports = router;

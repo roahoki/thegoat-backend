@@ -1,0 +1,21 @@
+version: 0.0
+os: linux
+files:
+  - source: ./docker-compose.yml
+    destination: /home/ubuntu/thegoat-backend/
+  - source: scripts
+    destination: /home/ubuntu/thegoat-backend/scripts
+
+hooks:
+  ApplicationStop:
+    - location: ./scripts/application-stop.sh
+      timeout: 10000
+  AfterInstall:
+    - location: ./scripts/after-install.sh
+      timeout: 3000
+  ApplicationStart:
+    - location: ./scripts/application-start.sh
+      timeout: 3000
+  ValidateService:
+    - location: ./scripts/validate-service.sh
+      timeout: 3000

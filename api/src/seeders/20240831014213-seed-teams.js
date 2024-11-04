@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
+  up: async (queryInterface) => {
     await queryInterface.bulkInsert('Teams', [
       { id: 45, name: 'Everton', logo: 'https://media.api-sports.io/football/teams/45.png', createdAt: new Date(), updatedAt: new Date() },
       { id: 35, name: 'Bournemouth', logo: 'https://media.api-sports.io/football/teams/35.png', createdAt: new Date(), updatedAt: new Date() },
@@ -15,7 +15,7 @@ module.exports = {
     ], {});
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface) => {
     await queryInterface.bulkDelete('Teams', null, {});
   }
 };

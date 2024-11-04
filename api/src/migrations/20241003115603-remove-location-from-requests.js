@@ -3,6 +3,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   up: async (queryInterface, Sequelize) => {
+    console.log(Sequelize);
     // Verificar si la columna 'location' existe
     const tableDescription = await queryInterface.describeTable('Requests');
     if (tableDescription.location) {

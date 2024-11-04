@@ -2,16 +2,16 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.addColumn('Usuarios', 'auth0Token', {
+    await queryInterface.addColumn('Users', 'auth0Token', {
       type: Sequelize.STRING,
       allowNull: false,
     });
-    await queryInterface.addColumn('Usuarios', 'email', {
+    await queryInterface.addColumn('Users', 'email', {
       type: Sequelize.STRING,
       allowNull: false,
       unique: true,
     });
-    await queryInterface.addColumn('Usuarios', 'name', {
+    await queryInterface.addColumn('Users', 'name', {
       type: Sequelize.STRING,
       allowNull: false,
     });
@@ -20,8 +20,9 @@ module.exports = {
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.removeColumn('Usuarios', 'auth0Token');
-    await queryInterface.removeColumn('Usuarios', 'email');
-    await queryInterface.removeColumn('Usuarios', 'name');
+    console.log(Sequelize);
+    await queryInterface.removeColumn('Users', 'auth0Token');
+    await queryInterface.removeColumn('Users', 'email');
+    await queryInterface.removeColumn('Users', 'name');
   },
 };
