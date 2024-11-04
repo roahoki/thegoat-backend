@@ -136,6 +136,7 @@ router.post("/", async (ctx) => {
 
             // Si es Webpay, manejar el flujo de Webpay
             if (!wallet) {
+                console.log('estoy ingresando a la parte de webpay \n')
                 try {
                 const webpayResponse = await axios.post(`${process.env.BACKEND_URL}/webpay/create`, {
                     request_id: newRequest.request_id,
