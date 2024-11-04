@@ -316,6 +316,7 @@ router.patch("/validate", async (ctx) => {
             fixture.available_bonds += request.quantity;
             await fixture.save({ transaction: t });
         }
+
         // Manejar requests aceptadas o rechazadas para el grupo 15
         if (group_id == "15") {
             const user = await User.findOne({ where: { id: request.user_id }, transaction: t });
@@ -338,18 +339,19 @@ router.patch("/validate", async (ctx) => {
                     return;
                 }
                 try {
-
-                    const user_id = request.user_id; //error
+                    const user_id = request.user_id;
                     const requestBody = { user_id: user_id};
                     const response = await axios.post('http://api:3000/workers/recommendation', requestBody);
                     console.log(response);
                     await user.save({ transaction: t });
-                    await t.commit(); // Confirmar la transacción
+                    // await t.commit(); sacado pq tiraba error
+
                 } catch (error) {
                     await t.rollback(); // Revertir la transacción en caso de error
                     ctx.status = 500;
                     ctx.body = { error: "Error saving user wallet balance." };
                     return;
+
                 }}  else {
                     // Si la transacción con wallet fue rechazada, no ajustar billetera
                     console.log("Wallet payment rejected, no balance changes.");

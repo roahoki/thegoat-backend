@@ -15,7 +15,7 @@ const protocol = process.env.MQTT_PROTOCOL;
 const api = process.env.API_URL;
 
 function connectToBroker() {
-    const clientId = "client_THEGOATs";
+    const clientId = "client_THEGOATec2";
     const hostURL = `${protocol}://${mqttHost}:${port}`;
 
     const options = {
