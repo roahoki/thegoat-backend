@@ -51,7 +51,7 @@ services:
   #   command: yarn start
 
   linter:
-    build: ./api
+    build: public.ecr.aws/h8q2k9k3/thegoat-backend:api-latest
     command: yarn lint
     volumes:
       - ./api:/app
