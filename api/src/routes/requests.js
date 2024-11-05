@@ -51,6 +51,8 @@ router.post("/", async (ctx) => {
 
         const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id, wallet } = ctx.request.body;
 
+        console.log(ctx.request.body);
+
         if (!group_id || !fixture_id || !league_name || !round || !date || !datetime || typeof wallet !== 'boolean' || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
             const print_message = ctx.request.body;
