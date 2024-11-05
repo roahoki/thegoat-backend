@@ -28,7 +28,9 @@ trxRouter.post('/create', async (ctx) => {
     console.log(request_id, quantity, "Id y cantidad en webpay")
 
     // Busca la request asociada
+    console.log("Inicio de búsqueda de request");
     const request = await Request.findByPk(request_id);
+    console.log("Fin de búsqueda de request");
 
     if (!request) {
       ctx.body = {
@@ -41,6 +43,9 @@ trxRouter.post('/create', async (ctx) => {
     // Calcula el monto total
     const amount = quantity * 1000;  // Ajusta el cálculo del monto según sea necesario
 
+    console.log("Inicio de creación de transacción en Webpay");
+    console.log("link redireccion", process.env.REDIRECT_URL)
+
     // USO: tx.create(transactionId, nombreComercio, monto, urlRetorno)
     const transactionResponse = await tx.create(
       request.request_id.slice(0, 26),  // ID de la transacción en Webpay
@@ -48,6 +53,8 @@ trxRouter.post('/create', async (ctx) => {
       amount,  // Monto total
       process.env.REDIRECT_URL  // URL de retorno (donde Webpay redirige después del pago)
     );
+
+    console.log("Fin de creación de transacción en Webpay");
 
     // Actualiza la request con el token de WebPay
     await Request.update(
