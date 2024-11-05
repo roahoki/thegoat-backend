@@ -51,8 +51,6 @@ router.post("/", async (ctx) => {
 
         const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id, wallet } = ctx.request.body;
 
-        console.log(ctx.request.body);
-
         if (!group_id || !fixture_id || !league_name || !round || !date || !datetime || typeof wallet !== 'boolean' || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
             const print_message = ctx.request.body;
@@ -140,21 +138,24 @@ router.post("/", async (ctx) => {
             if (!wallet) {
                 console.log('estoy ingresando a la parte de webpay \n')
                 try {
-                const webpayResponse = await axios.post(`${process.env.BACKEND_URL}/webpay/create`, {
-                    request_id: newRequest.request_id,
-                    quantity: newRequest.quantity
-                });
+                    const webpayResponse = await axios.post(`${process.env.BACKEND_URL}/webpay/create`, {
+                        request_id: newRequest.request_id,
+                        quantity: newRequest.quantity
+                    });
 
-                console.log(request_id, quantity, "enviando")
-        
-                // Devuelve la URL de Webpay al frontend
-                ctx.body = { token: webpayResponse.data.token, url: webpayResponse.data.url };
-                ctx.status = 201;
+                    console.log(request_id, quantity, "enviando")
+            
+                    // Devuelve la URL de Webpay al frontend
+                    ctx.body = { token: webpayResponse.data.token, url: webpayResponse.data.url };
+                    ctx.status = 201;
+                    
                 } catch (error) {
-                console.error('Error initiating Webpay transaction:', error);
-                ctx.status = 500;
-                ctx.body = { message: "Error initiating Webpay transaction." };
+                    console.error('Error initiating Webpay transaction:', error);
+                    ctx.status = 500;
+                    ctx.body = { message: "Error initiating Webpay transaction." };
                 }
+                return;
+
             } else {
                 // Si es wallet, no hacer Webpay
                 ctx.body = { message: "Request created and paid with wallet.", request_id: newRequest.request_id };
