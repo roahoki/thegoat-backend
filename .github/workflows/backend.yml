@@ -78,14 +78,14 @@ jobs:
 
       - name: Copy Zip to S3
         run: |
-          aws s3 cp deploy.zip s3://thegoatbet-cd/deploy.zip
+          aws s3 cp deploy.zip s3://thegoatbucket-cd/deploy.zip
       
       - name: Create CodeDeploy Deployment
         id: create-deployment-trigger
         run: |
           deploymentId=$(aws deploy create-deployment --application-name Thegoat-app \
           --deployment-group-name group-thegoat --region us-east-2 \
-          --s3-location bucket=thegoatbet-cd,key=deploy.zip,bundleType=zip \
+          --s3-location bucket=thegoatbucket-cd,key=deploy.zip,bundleType=zip \
           --description "Automatic deployment from githubactions commit ${{github.sha}}" | jq -r '.deploymentId')
           echo "DeploymentId=$deploymentId" >> $GITHUB_OUTPUT
     
