@@ -24,7 +24,7 @@ const trxRouter = new Router();
 
 trxRouter.post('/create', async (ctx) => {
   console.log("llegue al create");
-  console.log(request_id, quantity, "Id y cantidad en webpay")
+
   try {
     const { request_id, quantity } = ctx.request.body;
 
