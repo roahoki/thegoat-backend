@@ -148,7 +148,7 @@ router.post("/", async (ctx) => {
                     // Devuelve la URL de Webpay al frontend
                     ctx.body = { token: webpayResponse.data.token, url: webpayResponse.data.url };
                     ctx.status = 201;
-                    
+
                 } catch (error) {
                     console.error('Error initiating Webpay transaction:', error);
                     ctx.status = 500;
@@ -291,7 +291,7 @@ router.patch("/validate", async (ctx) => {
 
     try {
         const { request_id, group_id, seller, valid } = ctx.request.body;
-        console.log(seller);
+
         t = await Request.sequelize.transaction();
 
         const requestModel = group_id == "15" ? Request : ExternalRequest;
@@ -305,6 +305,8 @@ router.patch("/validate", async (ctx) => {
             return;
         }
 
+        console.log(request);
+
         const fixture = await Fixture.findOne({ where: { id: request.fixture_id }, transaction: t });
         if (!fixture) {
             await t.rollback();
@@ -313,7 +315,10 @@ router.patch("/validate", async (ctx) => {
             return;
         }
 
+        console.log(fixture);
+
         const newStatus = valid ? "accepted" : "rejected";
+        console.log(newStatus);
 
         // Si la request es rechazada, se devuelven los bonos disponibles al fixture
         if (!valid) {
@@ -336,6 +341,7 @@ router.patch("/validate", async (ctx) => {
             // Si es wallet (true), descontar si se acepta y manejar fondo insuficiente
             if (valid) {
                 user.wallet -= 1000 * request.quantity;
+                console.log("reste la plata");
                 if (user.wallet < 0) {
                     await t.rollback(); 
                     ctx.status = 402;
