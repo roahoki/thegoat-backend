@@ -83,9 +83,13 @@ trxRouter.post('/commit', async (ctx) => {
   console.log(token, "toooken");
 
   if (!token) {
+
+    console.log("no me llego ningun token");
     const request = await Request.findOne({ 
       where: { status: 'pending payment' }
     });
+
+    console.log(request, "esa es la request que no tiene token");
 
     if (request) {
       await request.update({ status: "rejected" });
