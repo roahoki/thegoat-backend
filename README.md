@@ -323,3 +323,8 @@ Esto creará el endpoint en API Gateway y retornara el link al que debes llamar 
 4. Llamar al endpoint desde la app:
 
 En nuestro caso, en el frontend cuando se presiona Generar Boleta se hace una llamada al link del serverless, y se redirige al usuario a la url del pdf en el bucket. 
+
+
+# Pasos Workers
+
+Redis y celery hace una abstracción del uso de encolamiento y el acceso de los consumers vía polling para la realización de las tareas, por lo que al levantar el back las recomendaciones se realizarán accediendo al back 
