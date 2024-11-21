@@ -1,5 +1,5 @@
 const Router = require("koa-router");
-const { Request, User, Fixture, ExternalRequest, Team, Odd } = require("../models");
+const { Request, User, Fixture, ExternalRequest, Team, Odd, AdminRequest } = require("../models");
 const router = new Router();
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
@@ -48,8 +48,22 @@ router.post("/", async (ctx) => {
     const t = await Request.sequelize.transaction();
 
     try {
-
-        const { group_id, fixture_id, league_name, round, date, result, deposit_token, datetime, quantity, user_id, status, request_id: incoming_request_id, wallet } = ctx.request.body;
+        const { 
+            group_id, 
+            fixture_id, 
+            league_name, 
+            round, 
+            date, 
+            result, 
+            deposit_token, 
+            datetime, 
+            quantity, 
+            user_id, 
+            status, 
+            request_id: incoming_request_id, 
+            wallet,
+            seller
+        } = ctx.request.body;
 
         if (!group_id || !fixture_id || !league_name || !round || !date || !datetime || typeof wallet !== 'boolean' || typeof quantity !== 'number' || quantity <= 0) {
             ctx.status = 400;
@@ -73,16 +87,14 @@ router.post("/", async (ctx) => {
         }
 
         let request_id;
-      
-        if (group_id == '15' && user_id && typeof request_id === 'undefined') {
 
-            // Generar un nuevo UUID para la request interna
+        // REQUESTS INTERNAS NORMALES
+        if (group_id == '15' && user_id && typeof request_id === 'undefined' && seller == '0') {
+
             request_id = uuidv4();
 
-            // Reservar los bonos reduciendo la cantidad disponible LO HACE
             await reservarBonos(fixture_id, quantity, t); 
 
-            // Crear la nueva request en la base de datos con estado 'sent' FUNCIONA
             const newRequest = await Request.create({
                 request_id,
                 group_id,
@@ -128,7 +140,7 @@ router.post("/", async (ctx) => {
                     ctx.status = 500;
                     ctx.body = { message: "Failed to publish message to broker." };
                 } else {
-                    console.log('Mensaje publicado en el canal fixtures/requests');
+                    console.log('Mensaje publicado en el canal fixtures/requests para la request interna normal');
                     ctx.status = 201;
                     ctx.body = { message: "Request successfully created and message sent to broker!", request: newRequest };
                 }
@@ -136,7 +148,7 @@ router.post("/", async (ctx) => {
 
             // Si es Webpay, manejar el flujo de Webpay
             if (!wallet) {
-                console.log('estoy ingresando a la parte de webpay \n')
+
                 try {
                     const webpayResponse = await axios.post(`${process.env.BACKEND_URL}/webpay/create`, {
                         request_id: newRequest.request_id,
@@ -161,9 +173,10 @@ router.post("/", async (ctx) => {
                 ctx.body = { message: "Request created and paid with wallet.", request_id: newRequest.request_id };
                 ctx.status = 201;
             }
-    
+
+        // REQUESTS EXTERNAS
         } else if (group_id !== '15') {
-            // Si el group_id no es 15, manejar como ExternalRequest
+
             request_id = incoming_request_id;
 
             const externalRequest = await ExternalRequest.create({
@@ -174,10 +187,10 @@ router.post("/", async (ctx) => {
                 round,
                 date,
                 result,
-                deposit_token: deposit_token || "",  // Por defecto vacío si no se pasa
+                deposit_token: deposit_token || "",
                 datetime,
                 quantity,
-                seller: 0,  // Siempre es 0
+                seller,
                 status: "pending"  // Cambiar a 'pending' cuando se crea la external request
             }, { transaction: t });
 
@@ -189,6 +202,93 @@ router.post("/", async (ctx) => {
 
             ctx.status = 201;
             ctx.body = { message: "External request successfully created!", externalRequest };
+
+        // REQUEST INTERNA DE ADMIN
+        } else if (seller !== 0 && group_id == '15' && typeof incoming_request_id === 'undefined') {
+            console.log('ADMIN COMPRANDOO');
+            const request_id = uuidv4();
+
+            // Reservar bonos
+            await reservarBonos(fixture_id, quantity, t);
+
+            // Crear la request de administrador
+            const adminRequest = await AdminRequest.create(
+                {
+                    request_id,
+                    group_id,
+                    fixture_id,
+                    league_name,
+                    round,
+                    date,
+                    result,
+                    deposit_token: deposit_token || "",
+                    datetime,
+                    quantity,
+                    seller: 15,
+                    status: "sent",
+                    wallet
+                },
+                { transaction: t }
+            );
+
+            await t.commit();
+
+            // Publicar mensaje al broker
+            const messagePayload = {
+                request_id,
+                group_id,
+                fixture_id,
+                league_name,
+                round,
+                date,
+                result,
+                deposit_token: deposit_token || "",
+                datetime,
+                quantity,
+                seller: 15,
+                wallet,
+            };
+
+            // Publicar el mensaje en el canal fixtures/requests
+            mqttClient.publish('fixtures/requests', JSON.stringify(messagePayload), { qos: 0 }, (error) => {
+                if (error) {
+                    console.error('Error al publicar en el broker:', error);
+                    ctx.status = 500;
+                    ctx.body = { message: "Failed to publish message to broker." };
+                } else {
+                    console.log('Mensaje publicado en el canal fixtures/requests para la request de admin');
+                    ctx.status = 201;
+                    ctx.body = { message: "Request successfully created and message sent to broker!", request: adminRequest };
+                }
+            });
+
+            // Si es Webpay, manejar el flujo de Webpay
+            if (!wallet) {
+
+                try {
+                    const webpayResponse = await axios.post(`${process.env.BACKEND_URL}/webpay/create`, {
+                        request_id: adminRequest.request_id,
+                        quantity: adminRequest.quantity
+                    });
+
+                    console.log(request_id, quantity, "enviando")
+            
+                    // Devuelve la URL de Webpay al frontend
+                    ctx.body = { token: webpayResponse.data.token, url: webpayResponse.data.url };
+                    ctx.status = 201;
+
+                } catch (error) {
+                    console.error('Error initiating Webpay transaction:', error);
+                    ctx.status = 500;
+                    ctx.body = { message: "Error initiating Webpay transaction." };
+                }
+                return;
+
+            } else {
+                // Si es wallet, no hacer Webpay
+                ctx.body = { message: "Request created and paid with wallet.", request_id: adminRequest.request_id };
+                ctx.status = 201;
+            }
 
         } else {
             // Si el group_id es 15, pero la request ya existe o no tiene user id
@@ -294,14 +394,19 @@ router.patch("/validate", async (ctx) => {
 
         t = await Request.sequelize.transaction();
 
-        const requestModel = group_id == "15" ? Request : ExternalRequest;
+        let requestModel;
+        if (group_id == "15") {
+            requestModel = seller == "15" ? AdminRequest : Request;
+        } else {
+            requestModel = ExternalRequest;
+        }
 
         // Busca la request correspondiente (interna o externa)
         const request = await requestModel.findOne({ where: { request_id }, transaction: t });
         if (!request) {
             await t.rollback();
             ctx.status = 404;
-            ctx.body = { error: `${group_id == '15' ? 'Request' : 'External Request'} not found` };
+            ctx.body = { error: `${seller == '15' ? 'Admin Request' : group_id == '15' ? 'Request' : 'External Request'} not found` };
             return;
         }
 
@@ -327,7 +432,7 @@ router.patch("/validate", async (ctx) => {
         }
 
         // Manejar requests aceptadas o rechazadas para el grupo 15
-        if (group_id == "15") {
+        if (group_id == "15" && seller == '0') {
             const user = await User.findOne({ where: { id: request.user_id }, transaction: t });
             if (!user) {
                 await t.rollback();
