@@ -1,5 +1,5 @@
 const Router = require("koa-router");
-const { AdminRequest, Request } = require("../models"); 
+const { AdminRequest, Request, User } = require("../models"); 
 const router = new Router();
 const { User } = require('../models'); // Asegúrate de importar el modelo User
 
@@ -121,6 +121,33 @@ router.post('/bonds/:bondId/buy', async (ctx) => {
             return;
         }
 
+        // Calcular precio con descuento
+        const pricePerBond = 1000;
+        const totalPrice = pricePerBond * quantity * ((100 - bond.discount) / 100);
+
+        // Obtener el usuario
+        const user = await User.findByPk(userId);
+
+        if (!user) {
+            ctx.status = 404;
+            ctx.body = { error: 'User not found' };
+            return;
+        }
+
+        // Verificar si el usuario tiene suficiente dinero en el wallet
+        if (user.wallet < totalPrice) {
+            ctx.status = 400;
+            ctx.body = { error: 'Insufficient funds in wallet.' };
+            return;
+        }
+
+        // Restar el precio total del wallet del usuario
+        console.log(user.wallet, "wallet antes");
+        console.log(totalPrice, "total price");
+        user.wallet -= totalPrice;
+        await user.save();
+        console.log(user.wallet, "wallet despues");
+
         bond.quantity -= quantity;
         if (bond.quantity === 0) {
             await bond.destroy();
@@ -156,5 +183,37 @@ router.post('/bonds/:bondId/buy', async (ctx) => {
     }
 });
 
+
+router.patch('/bonds/:bondId/discount', async (ctx) => {
+    const { bondId } = ctx.params;
+    const { discount } = ctx.request.body;
+  
+    if (![10, 20, 30].includes(discount)) {
+      ctx.status = 400;
+      ctx.body = { error: 'Invalid discount value. Only 10%, 20%, and 30% are allowed.' };
+      return;
+    }
+  
+    try {
+      const bond = await AdminRequest.findByPk(bondId);
+  
+      if (!bond) {
+        ctx.status = 404;
+        ctx.body = { error: 'Bond not found' };
+        return;
+      }
+  
+      bond.discount = discount;
+      await bond.save();
+  
+      ctx.status = 200;
+      ctx.body = { message: 'Discount applied successfully.', bond };
+    } catch (error) {
+      console.error('Error applying discount:', error);
+      ctx.status = 500;
+      ctx.body = { error: 'Failed to apply discount.' };
+    }
+  });
+  
 
 module.exports = router;
