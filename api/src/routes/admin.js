@@ -1,13 +1,41 @@
 const Router = require("koa-router");
 const { AdminRequest, Request, User } = require("../models"); 
 const router = new Router();
+const { User } = require('../models'); // Asegúrate de importar el modelo User
+
+const getUserById = async (userId) => {
+    return await User.findOne({
+        where: { id: userId },
+        attributes: ['id', 'isAdmin'], // Obtener solo los campos necesarios
+    });
+};
+
 
 // Obtener bonos de admin
 router.get('/bonds', async (ctx) => {
+    const { userId } = ctx.query; // Obtener el userId desde los query parameters
+
     try {
+        // Validar que el userId esté presente
+        if (!userId) {
+            ctx.status = 400;
+            ctx.body = { error: 'userId query parameter is required.' };
+            return;
+        }
+
+        // Verificar que el usuario sea administrador
+        const user = await getUserById(userId);
+        if (!user || !user.isAdmin) {
+            ctx.status = 403;
+            ctx.body = { error: 'Access denied. Admins only.' };
+            return;
+        }
+
+        // Obtener los bonos del administrador
         const adminBonds = await AdminRequest.findAll({
-            where: { status: 'accepted' }, 
+            where: { status: 'accepted' },
         });
+
         ctx.status = 200;
         ctx.body = { adminBonds };
     } catch (error) {
@@ -16,18 +44,36 @@ router.get('/bonds', async (ctx) => {
         ctx.body = { error: 'An error occurred while fetching admin bonds.' };
     }
 });
-
 // Disponibilizar un bono
 router.patch('/bonds/:id/avail', async (ctx) => {
     const { id } = ctx.params;
+    const { userId } = ctx.query; // Obtenemos el userId desde los query params
+
     try {
-        const bond = await AdminRequest.findByPk(id);
-        if (!bond) {
-            ctx.status = 404;
-            ctx.body = { error: 'Bond not found' };
+        // Validar que el userId esté presente
+        if (!userId) {
+            ctx.status = 400;
+            ctx.body = { error: 'userId query parameter is required.' };
             return;
         }
 
+        // Verificar si el usuario es administrador
+        const user = await getUserById(userId);
+        if (!user || !user.isAdmin) {
+            ctx.status = 403;
+            ctx.body = { error: 'Access denied. Admins only.' };
+            return;
+        }
+
+        // Buscar el bono por ID
+        const bond = await AdminRequest.findByPk(id);
+        if (!bond) {
+            ctx.status = 404;
+            ctx.body = { error: 'Bond not found.' };
+            return;
+        }
+
+        // Actualizar el estado del bono
         bond.status = 'available';
         await bond.save();
 
