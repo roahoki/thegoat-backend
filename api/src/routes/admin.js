@@ -40,6 +40,8 @@ router.patch('/bonds/:id/avail', async (ctx) => {
     }
 });
 
+// PENDIENTE TODAS DESDA ACA PARA ARRIBA SON SOLO DE ADMIN, LAS 2 DE ABAJO SON PARA TODOS"
+
 // Obtener bonos de admin disponibles
 router.get('/bonds/avail', async (ctx) => {
     try {
@@ -91,7 +93,7 @@ router.post('/bonds/:bondId/buy', async (ctx) => {
             result: bond.result,
             quantity: quantity,
             datetime: bond.datetime,
-            seller: 0, 
+            seller: 15, 
             status: 'accepted', 
             group_id: bond.group_id,
             wallet: bond.wallet,

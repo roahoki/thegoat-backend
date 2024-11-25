@@ -205,7 +205,6 @@ router.post("/", async (ctx) => {
 
         // REQUEST INTERNA DE ADMIN
         } else if (seller !== 0 && group_id == '15' && typeof incoming_request_id === 'undefined') {
-            console.log('ADMIN COMPRANDOO');
             const request_id = uuidv4();
 
             // Reservar bonos

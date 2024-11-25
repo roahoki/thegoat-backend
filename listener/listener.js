@@ -36,24 +36,7 @@ function connectToBroker() {
         // console.log("You had an Error: ", err);
         mqttClient.end();
     });
-
-    mqttClient.on("connect", () => {
-        console.log("Connected to MQTT broker");
-    });
     
-    mqttClient.on("reconnect", () => {
-        console.log("Attempting to reconnect to MQTT broker...");
-    });
-    
-    mqttClient.on("close", () => {
-        console.error("Connection to MQTT broker closed");
-    });
-    
-    mqttClient.on("offline", () => {
-        console.error("MQTT client is offline");
-    });
-    
-
     // Recibir mensajes
     mqttClient.on("message", (topic, message, packet) => {
 
@@ -149,7 +132,59 @@ function connectToBroker() {
                 // console.error(`Error sending message to API for topic ${topic}`);
             });
 
-        }else {
+        // Añade lógica para manejar los tipos de mensajes adicionales
+        } else if (topic === "fixtures/auctions") {
+            const { type } = parsedMessage;
+
+            if (type === "offer") {
+                // Manejar ofertas iniciales
+                apiEndpoint = `${api}/auctions/offers`;
+                axios.post(apiEndpoint, parsedMessage, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('Offer sent to API');
+                })
+                .catch(error => {
+                    console.error(`Error sending offer to API for topic ${topic}`);
+                });
+
+            } else if (type === "proposal") {
+                // Manejar propuestas
+                apiEndpoint = `${api}/auctions/proposals`;
+                axios.post(apiEndpoint, parsedMessage, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('Proposal sent to API');
+                })
+                .catch(error => {
+                    console.error(`Error sending proposal to API for topic ${topic}`);
+                });
+
+            } else if (type === "acceptance" || type === "rejection") {
+                // Manejar respuestas a propuestas
+                apiEndpoint = `${api}/auctions/proposals/responce`;
+                axios.patch(apiEndpoint, parsedMessage, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log(`${type.charAt(0).toUpperCase() + type.slice(1)} response sent to API`);
+                })
+                .catch(error => {
+                    console.error(`Error sending ${type} response to API for topic ${topic}`);
+                });
+            } else {
+                console.error(`Unknown auction type: ${type}`);
+            }
+
+        } else {
             // console.log("Tópico no reconocido:", topic);
             return;  // Salir si el tópico no es reconocido
         }
@@ -165,9 +200,9 @@ function subscribeToTopic(topic) {
 
     mqttClient.subscribe(topic, { qos: 0 }, (err) => {
         if (err) {
-            // console.log(`Failed to subscribe to topic: ${topic}`);
+            console.log(`Failed to subscribe to topic: ${topic}`);
         } else {
-            // console.log(`Successfully subscribed to topic: ${topic}`);
+            console.log(`Successfully subscribed to topic: ${topic}`);
         }
     });
 }

@@ -8,6 +8,7 @@ const webpay = require('./routes/webpay.js');
 const workers = require('./routes/workers.js');
 const jobs = require('./routes/jobs.js');
 const admin = require('./routes/admin.js');
+const auctions = require('./routes/auctions.js')
 
 const router = new Router();
 
@@ -18,7 +19,8 @@ router.use("/users", users.routes());
 router.use("/webpay", webpay.routes());
 router.use("/workers", workers.routes());
 router.use("/jobs", jobs.routes());
-router.use("/admin", admin.routes())
+router.use("/admin", admin.routes());
+router.use("/auctions", auctions.routes());
 
 
 module.exports = router;
