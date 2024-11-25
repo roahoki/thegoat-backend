@@ -4,6 +4,7 @@ const Router = require("koa-router");
 const { AuctionOffer, AdminRequest } = require("../models");
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
+const checkAdmin = require('../config/checkAdmin');
 const router = new Router();
 const { Op } = require("sequelize");
 
@@ -25,7 +26,7 @@ mqttClient.on("error", (err) => {
 });
 
 
-// Guardar todas las ofertas de subasta, de todos los grupos
+// Guardar todas las ofertas de subasta, de todos los grupos, lo llama solo el listener, no protegido
 router.post("/offers", async (ctx) => {
     const {
         auction_id,
@@ -90,7 +91,6 @@ router.get("/offers", async (ctx) => {
     }
 });
 
-
 // Poner un bono en subasta
 router.post("/:bondId", async (ctx) => {
     const { bondId } = ctx.params;
@@ -147,7 +147,6 @@ router.post("/:bondId", async (ctx) => {
         ctx.body = { error: "Failed to put bond on auction" };
     }
 });
-
 
 router.post('/:auctionId/offer', async (ctx) => {
     const { auctionId } = ctx.params;
@@ -213,7 +212,6 @@ router.post('/:auctionId/offer', async (ctx) => {
     }
 });
 
-
 // Obtener propuestas que el admin ha hecho, junto con su estado
 router.get("/my-offers", async (ctx) => {
     const { userId } = ctx.query;
@@ -236,7 +234,7 @@ router.get("/my-offers", async (ctx) => {
     }
 });
 
-// Endpoint para guardar propuestas de los otros grupos a mis subastas
+// Endpoint para guardar propuestas de los otros grupos a mis subastas, lo llama el listener
 router.post("/proposals", async (ctx) => {
     try {
         const proposalData = ctx.request.body;
@@ -278,7 +276,6 @@ router.post("/proposals", async (ctx) => {
         ctx.body = { error: "Failed to save proposal." };
     }
 });
-
 
 // Endpoint para manejar respuestas a propuestas que yo hice (me aceptan o rechazan mediante el listener)
 router.patch("/proposals/responce", async (ctx) => {
@@ -358,7 +355,6 @@ router.patch("/proposals/responce", async (ctx) => {
     }
 });
 
-
 // Get las propuestas que han hecho a mis auctions
 router.get("/proposals", async (ctx) => {
     try {
@@ -390,6 +386,7 @@ router.get("/proposals", async (ctx) => {
     }
 });
 
+// responder a una propuesta que me hicieron
 router.patch("/proposals/respond", async (ctx) => {
     try {
         const { proposal_id, type } = ctx.request.body;

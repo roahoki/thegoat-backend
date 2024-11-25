@@ -15,15 +15,6 @@ app.use(KoaLogger());
 // Use bodyParser middleware
 app.use(bodyParser());
 
-// app.use(async (ctx, next) => {
-//   ctx.set('Access-Control-Allow-Origin', 'http://localhost:5173');
-//   ctx.set('Access-Control-Allow-Credentials', 'true');
-//   ctx.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-//   ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-//   await next();
-// });
-// =======
-// Use CORS middleware
 app.use(cors());
 
 
