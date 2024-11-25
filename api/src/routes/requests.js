@@ -409,8 +409,6 @@ router.patch("/validate", async (ctx) => {
             return;
         }
 
-        console.log(request);
-
         const fixture = await Fixture.findOne({ where: { id: request.fixture_id }, transaction: t });
         if (!fixture) {
             await t.rollback();
@@ -418,8 +416,6 @@ router.patch("/validate", async (ctx) => {
             ctx.body = "Fixture not found";
             return;
         }
-
-        console.log(fixture);
 
         const newStatus = valid ? "accepted" : "rejected";
         console.log(newStatus);
@@ -498,6 +494,32 @@ router.patch("/validate", async (ctx) => {
                     console.error("Error sending confirmation email:", error);
                   }
             }
+        }
+
+        // Manejar requests aceptadas o rechazadas compradas por el admin
+        if (group_id === 15 && seller == '15') {
+            console.log("ENTRE AL IF");
+            const adminUser = await User.findOne({ where: { isAdmin: true }, transaction: t });
+            if (!adminUser) {
+                await t.rollback();
+                ctx.status = 404;
+                ctx.body = { error: "Admin user not found" };
+                return;
+            }
+        
+            const totalPrice = 1000 * request.quantity;
+            adminUser.wallet -= totalPrice;
+            console.log(adminUser.wallet, "nueva wallet");
+        
+            if (adminUser.wallet < 0) {
+                await t.rollback();
+                ctx.status = 402;
+                ctx.body = { error: "Insufficient funds in the admin's wallet." };
+                return;
+            }
+        
+            await adminUser.save({ transaction: t });
+            console.log("Admin wallet updated successfully.");
         }
 
         // Actualizar el estado de la request, independientemente de si es wallet o Webpay
