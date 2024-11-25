@@ -331,3 +331,104 @@ En nuestro caso, en el frontend cuando se presiona Generar Boleta se hace una ll
 # Pasos Workers
 
 Redis y celery hace una abstracción del uso de encolamiento y el acceso de los consumers vía polling para la realización de las tareas, por lo que al levantar el back las recomendaciones se realizarán accediendo al back 
+
+
+# Flujos y pasos en la configuración de IaaC
+
+La configuración de **Infrastructure as Code (IaaC)** se realiza utilizando AWS CDK (Cloud Development Kit) en un stack llamado `my-cdk-project-stack`. Este stack crea y configura automáticamente los recursos de AWS necesarios para la operación del backend de la aplicación **The Goat BACKEND**.
+
+#### Flujo de Configuración del Código
+1. **Inicialización del App**
+   - El archivo principal `bin/my-cdk-project.ts` contiene la inicialización de la aplicación CDK.
+   - Configura la cuenta y la región donde se desplegarán los recursos:
+     ```typescript
+     const app = new cdk.App();
+     new BackendInfrastructureStack(app, 'BackendInfrastructureStack', {
+       env: { 
+         account: '577638367697', 
+         region: 'us-east-2' 
+       },
+       description: 'Infrastructure stack for existing backend instance'
+     });
+     ```
+
+2. **Referenciar Recursos Existentes**
+   - Se reutilizan recursos como la **VPC** y una instancia **EC2** existentes, lo que garantiza eficiencia y consistencia en la infraestructura.
+
+3. **Creación de Recursos**
+   - Se definen y configuran nuevos recursos, como un bucket **S3** para registros y respaldos, alarmas de **CloudWatch** para monitoreo, un tópico **SNS** para notificaciones, y un **Security Group** adicional para el control del tráfico de red.
+
+4. **Asignación de Roles y Políticas**
+   - Se crea un rol **IAM** con permisos específicos para acceder al bucket de S3 y a **AWS Systems Manager**, asegurando que la instancia EC2 tenga los privilegios necesarios para gestionar la infraestructura de manera segura.
+
+5. **Alertas y Monitoreo**
+   - Se configuran alarmas de **CloudWatch** para supervisar la utilización de CPU y los fallos en los checks de estado de la instancia EC2, enviando notificaciones al tópico SNS en caso de problemas.
+
+6. **Salida de Información**
+   - Se generan outputs útiles (como el ARN del tópico SNS, el nombre del bucket S3 y el ID de la instancia EC2) para facilitar el acceso a los recursos configurados.
+
+#### Pasos de Implementación
+
+1. **Instalar AWS CDK y Configurar el Entorno**
+   - Instala AWS CDK con `npm install -g aws-cdk`.
+   - Configura las credenciales de AWS utilizando `aws configure`.
+
+2. **Definir el Stack**
+   - El código de configuración se encuentra en `lib/my-cdk-project-stack.ts` y la inicialización del app en `bin/my-cdk-project.ts`.
+
+3. **Inicializar y Desplegar el Stack**
+   - Asegúrate de instalar las dependencias del proyecto:
+     ```bash
+     npm install
+     ```
+   - Ejecuta el comando para sintetizar el stack:
+     ```bash
+     cdk synth
+     ```
+   - Despliega el stack en tu cuenta de AWS:
+     ```bash
+     cdk deploy
+     ```
+   - Confirma los cambios durante el despliegue si es necesario.
+
+4. **Detalles del Código**
+   - **Inicializar el App:**
+     ```typescript
+     const app = new cdk.App();
+     new BackendInfrastructureStack(app, 'BackendInfrastructureStack', {
+       env: { 
+         account: '577638367697', 
+         region: 'us-east-2' 
+       },
+       description: 'Infrastructure stack for existing backend instance'
+     });
+     ```
+   - **Referenciar VPC e Instancia EC2 existentes:**
+     ```typescript
+     const existingVpc = ec2.Vpc.fromLookup(this, 'CDKVPC', {
+       vpcId: 'vpc-033aded37d02f7e0a',
+     });
+     const instanceId = 'i-0bb10936c1c1fb634';
+     ```
+   - **Crear un Bucket S3 para Logs:**
+     ```typescript
+     const logsBucket = new s3.Bucket(this, 'BackendLogsBucket', {
+       bucketName: `backend-logs-${this.account}-${this.region}`,
+       removalPolicy: cdk.RemovalPolicy.RETAIN,
+       encryption: s3.BucketEncryption.S3_MANAGED,
+     });
+     ```
+   - **Configurar Roles y Permisos:**
+     ```typescript
+     const backendRole = new iam.Role(this, 'BackendInstanceRole', {
+       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+       roleName: 'backend-instance-role'
+     });
+     backendRole.addManagedPolicy(
+       iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
+     );
+     ```
+
+5. **Verificar la Configuración**
+   - Usa la consola de AWS para confirmar que los recursos se han creado correctamente (S3, alarmas, tópico SNS, etc.).
+   - Verifica los logs y notificaciones para asegurar que las alarmas y los flujos de datos funcionan como se espera.
