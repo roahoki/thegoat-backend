@@ -7,10 +7,19 @@ const mqtt = require('mqtt');
 const checkAdmin = require('../config/checkAdmin');
 const router = new Router();
 const { Op } = require("sequelize");
-
+const { sequelize } = require('../models');
+const { User } = require("../models");
 const dotenv = require('dotenv');
 // Cargar variables de entorno desde el archivo .env
 dotenv.config();
+
+
+const getUserById = async (userId) => {
+    return await User.findOne({
+        where: { id: userId },
+        attributes: ["id", "isAdmin"], // Selecciona solo las columnas necesarias
+    });
+};
 
 // Configuración de conexión MQTT
 const mqttClient = mqtt.connect({
@@ -76,7 +85,18 @@ router.post("/offers", async (ctx) => {
 
 // Obtener ofertas de subasta
 router.get("/offers", async (ctx) => {
+    const { userId } = ctx.request.query;
+
     try {
+        // Verificar si el usuario es administrador
+        const user = await getUserById(userId);
+        if (!user || !user.isAdmin) {
+            ctx.status = 403;
+            ctx.body = { error: "Access denied. Admins only." };
+            return;
+        }
+
+        // Buscar las ofertas de subasta
         const offers = await AuctionOffer.findAll({
             where: {
                 type: "offer",
@@ -91,19 +111,30 @@ router.get("/offers", async (ctx) => {
     }
 });
 
+
 // Poner un bono en subasta
 router.post("/:bondId", async (ctx) => {
     const { bondId } = ctx.params;
+    const { userId } = ctx.request.body; // Suponiendo que el frontend envía el userId en el body
 
     try {
-        const bond = await AdminRequest.findByPk(bondId);
+        // Verificar si el usuario es administrador
+        const user = await getUserById(userId);
+        if (!user || !user.isAdmin) {
+            ctx.status = 403;
+            ctx.body = { error: "Access denied. Admins only." };
+            return;
+        }
 
+        // Obtener el bond
+        const bond = await AdminRequest.findByPk(bondId);
         if (!bond) {
             ctx.status = 404;
             ctx.body = { error: "Bond not found" };
             return;
         }
 
+        // Verificar el estado del bond
         if (bond.status === "available") {
             ctx.status = 400;
             ctx.body = { error: "Bond is available for users, remove it before auctioning it" };
@@ -112,15 +143,16 @@ router.post("/:bondId", async (ctx) => {
 
         if (bond.status === "on auction") {
             ctx.status = 200;
-            console.log("Our offer coming back")
+            ctx.body = { message: "Bond is already on auction" };
+            console.log("Our offer coming back");
             return;
         }
 
-        // Update the bond status to "on auction"
+        // Actualizar el estado del bond
         bond.status = "on auction";
         await bond.save();
 
-        // Generate auction data
+        // Generar datos de la subasta
         const auctionId = uuidv4();
         const auctionMessage = {
             auction_id: auctionId,
@@ -129,14 +161,14 @@ router.post("/:bondId", async (ctx) => {
             round: bond.round,
             result: bond.result,
             quantity: bond.quantity,
-            group_id: 15, 
-            type: "offer"
+            group_id: 15,
+            type: "offer",
         };
 
-        // Save to AuctionOffer table
+        // Guardar en la tabla AuctionOffer
         await AuctionOffer.create(auctionMessage);
 
-        // Publish to MQTT
+        // Publicar en el canal MQTT
         mqttClient.publish("fixtures/auctions", JSON.stringify(auctionMessage));
 
         ctx.status = 200;
@@ -150,9 +182,17 @@ router.post("/:bondId", async (ctx) => {
 
 router.post('/:auctionId/offer', async (ctx) => {
     const { auctionId } = ctx.params;
-    const { bondId, request_id, fixture_id, league_name, round, result, quantity } = ctx.request.body;
+    const { userId, bondId, request_id, fixture_id, league_name, round, result, quantity } = ctx.request.body;
 
     try {
+        // Verificar si el usuario es administrador
+        const user = await getUserById(userId);
+        if (!user || !user.isAdmin) {
+            ctx.status = 403;
+            ctx.body = { error: 'Access denied. Admins only.' };
+            return;
+        }
+
         // Verificar que el bono ofrecido exista y tenga cantidad suficiente
         const bond = await AdminRequest.findByPk(bondId);
         if (!bond || bond.quantity < quantity) {
@@ -175,7 +215,7 @@ router.post('/:auctionId/offer', async (ctx) => {
         const offerMessage = {
             auction_id: auctionId,
             proposal_id: proposalId,
-            fixture_id: fixture_id, // Datos del bono ofrecido
+            fixture_id: fixture_id,
             league_name: league_name,
             round: round,
             result: result,
@@ -194,7 +234,7 @@ router.post('/:auctionId/offer', async (ctx) => {
             round: round,
             result: result,
             quantity: quantity,
-            group_id: 15, // ID del grupo que hace la oferta
+            group_id: 15,
             type: 'proposal',
             request_id: request_id
         });
@@ -212,19 +252,37 @@ router.post('/:auctionId/offer', async (ctx) => {
     }
 });
 
+
 // Obtener propuestas que el admin ha hecho, junto con su estado
 router.get("/my-offers", async (ctx) => {
     const { userId } = ctx.query;
 
     try {
+        // Validar si el userId está presente
+        if (!userId) {
+            ctx.status = 400;
+            ctx.body = { error: "userId query parameter is required." };
+            return;
+        }
+
+        // Verificar si el usuario existe y es administrador
+        const user = await getUserById(userId);
+        if (!user || !user.isAdmin) {
+            ctx.status = 403;
+            ctx.body = { error: "Access denied. Admins only." };
+            return;
+        }
+
+        // Obtener las ofertas del usuario
         const userOffers = await AuctionOffer.findAll({
             where: {
-                group_id: 15,
+                group_id: 15, // Cambia a userId si es necesario
                 type: {
                     [Op.or]: ["proposal", "accepted", "rejected"],
                 },
             },
         });
+
         ctx.status = 200;
         ctx.body = { offers: userOffers };
     } catch (error) {
@@ -233,6 +291,7 @@ router.get("/my-offers", async (ctx) => {
         ctx.body = { error: "Failed to fetch user offers." };
     }
 });
+
 
 // Endpoint para guardar propuestas de los otros grupos a mis subastas, lo llama el listener
 router.post("/proposals", async (ctx) => {
@@ -357,11 +416,28 @@ router.patch("/proposals/responce", async (ctx) => {
 
 // Get las propuestas que han hecho a mis auctions
 router.get("/proposals", async (ctx) => {
+    const { userId } = ctx.query;
+
     try {
+        // Validar si el userId está presente
+        if (!userId) {
+            ctx.status = 400;
+            ctx.body = { error: "userId query parameter is required." };
+            return;
+        }
+
+        // Verificar si el usuario existe y es administrador
+        const user = await getUserById(userId);
+        if (!user || !user.isAdmin) {
+            ctx.status = 403;
+            ctx.body = { error: "Access denied. Admins only." };
+            return;
+        }
+
         // Obtener todas las ofertas del administrador
         const adminOffers = await AuctionOffer.findAll({
             where: {
-                group_id: 15, // Grupo del administrador
+                group_id: 15, // Cambia esto a `userId` si cada administrador tiene un grupo único
                 type: "offer",
             },
         });
@@ -386,12 +462,30 @@ router.get("/proposals", async (ctx) => {
     }
 });
 
-// responder a una propuesta que me hicieron
+
 router.patch("/proposals/respond", async (ctx) => {
     try {
+        const { userId } = ctx.query; // Obtener el userId desde los query params
         const { proposal_id, type } = ctx.request.body;
-        console.log(proposal_id, type);
 
+        console.log("Proposal ID:", proposal_id, "Type:", type, "User ID:", userId);
+
+        // Validar si el userId está presente
+        if (!userId) {
+            ctx.status = 400;
+            ctx.body = { error: "userId query parameter is required." };
+            return;
+        }
+
+        // Verificar si el usuario existe y es administrador
+        const user = await getUserById(userId);
+        if (!user || !user.isAdmin) {
+            ctx.status = 403;
+            ctx.body = { error: "Access denied. Admins only." };
+            return;
+        }
+
+        // Buscar la propuesta
         const proposal = await AuctionOffer.findOne({
             where: { proposal_id, type: "proposal" },
         });
@@ -415,8 +509,8 @@ router.patch("/proposals/respond", async (ctx) => {
             round: proposal.round,
             result: proposal.result,
             quantity: proposal.quantity,
-            group_id: 15, 
-            type: type, 
+            group_id: 15,
+            type: type,
         };
 
         if (type === "acceptance") {
@@ -450,7 +544,7 @@ router.patch("/proposals/respond", async (ctx) => {
                 status: "accepted",
                 wallet: offeredBond.wallet,
                 group_id: 15,
-                datetime: offeredBond.datetime
+                datetime: offeredBond.datetime,
             });
         }
 
@@ -465,6 +559,7 @@ router.patch("/proposals/respond", async (ctx) => {
         ctx.body = { error: "Failed to handle proposal response." };
     }
 });
+
 
 
 module.exports = router;
