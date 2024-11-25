@@ -40,8 +40,6 @@ router.patch('/bonds/:id/avail', async (ctx) => {
     }
 });
 
-// PENDIENTE TODAS DESDA ACA PARA ARRIBA SON SOLO DE ADMIN, LAS 2 DE ABAJO SON PARA TODOS"
-
 // Obtener bonos de admin disponibles
 router.get('/bonds/avail', async (ctx) => {
     try {
