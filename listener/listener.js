@@ -15,7 +15,7 @@ const protocol = process.env.MQTT_PROTOCOL;
 const api = process.env.API_URL;
 
 function connectToBroker() {
-    const clientId = "client_THEGOATec2";
+    const clientId = "client_THEGOATem";
     const hostURL = `${protocol}://${mqttHost}:${port}`;
 
     const options = {
@@ -36,7 +36,7 @@ function connectToBroker() {
         // console.log("You had an Error: ", err);
         mqttClient.end();
     });
-
+    
     // Recibir mensajes
     mqttClient.on("message", (topic, message, packet) => {
 
@@ -68,14 +68,11 @@ function connectToBroker() {
             if (parsedMessage.group_id != '15') {
                 a = 1;
             } else {   
-                // console.log("\n\nProcesando mensaje de fixtures/validation...");
-                // // console.log("Message Received: " + message.toString() + "\nOn topic: " + topic);
         
                 const apiEndpoint = `${api}/requests/validate`;
                 let attempts = 0;
-                const maxRetries = 0;
+                const maxRetries = 2;
         
-                // Definición de sendValidation dentro del mismo bloque
                 const sendValidation = () => {
                     axios.patch(apiEndpoint, parsedMessage, {
                         headers: {
@@ -83,48 +80,39 @@ function connectToBroker() {
                         }
                     })
                     .then(response => {
-                        // console.log('VALIDATION SENT');
-                        console.log('.')
+                        console.log('VALIDATION SENT');
                     })
                     .catch(error => {
-                        // // console.error(`AQUI VAN LOS RETRIES Error sending message to API for topic ${topic}:`);
                         attempts++;
                         if (attempts < maxRetries) {
-                            // console.log(`Retrying... Attempts left: ${maxRetries - attempts}`);
+                            console.log(`Retrying... Attempts left: ${maxRetries - attempts}`);
                             setTimeout(sendValidation, 1000);
                         }
                     });
                 };
-        
                 sendValidation();
             }
         
         } else if (topic === "fixtures/requests") {
-            // // console.log("\n\n\n\nProcesando mensaje de fixtures/requests...");
+
             apiEndpoint = `${api}/requests`;
         
             if (parsedMessage.group_id != '15') {
                 a = 1;
-            } else {                
 
+            } else {
                 axios.post(apiEndpoint, parsedMessage, {
                     headers: {
                         'Content-Type': 'application/json'
                     }
                 })
                 .then(response => {
-                    // console.log(`Message sent to API for topic ${topic}:`, response.data);
-                    // // console.log('Request success');
-                    console.log('.')
+                    console.log('Request success');
                 })
+
                 .catch(error => {
-                    if (error.response && error.response.data && 
-                        (error.response.data.message === "Either user_id is missing, or the request already exists.")) {
-                        // console.log("Ignoring error because it is our request coming back.");
-                        return; // Salir del bloque catch sin hacer nada
-                    }
-                    console.log('.')
-                    // console.error(`Error sending message to API for topic ${topic}`);
+                    console.log("Ignoring error because it is our request coming back.");
+                    console.error(`Error sending message to API for topic ${topic}`);
                 });
             }
 
@@ -144,7 +132,59 @@ function connectToBroker() {
                 // console.error(`Error sending message to API for topic ${topic}`);
             });
 
-        }else {
+        // Añade lógica para manejar los tipos de mensajes adicionales
+        } else if (topic === "fixtures/auctions") {
+            const { type } = parsedMessage;
+
+            if (type === "offer") {
+                // Manejar ofertas iniciales
+                apiEndpoint = `${api}/auctions/offers`;
+                axios.post(apiEndpoint, parsedMessage, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('Offer sent to API');
+                })
+                .catch(error => {
+                    console.error(`Error sending offer to API for topic ${topic}`);
+                });
+
+            } else if (type === "proposal") {
+                // Manejar propuestas
+                apiEndpoint = `${api}/auctions/proposals`;
+                axios.post(apiEndpoint, parsedMessage, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('Proposal sent to API');
+                })
+                .catch(error => {
+                    console.error(`Error sending proposal to API for topic ${topic}`);
+                });
+
+            } else if (type === "acceptance" || type === "rejection") {
+                // Manejar respuestas a propuestas
+                apiEndpoint = `${api}/auctions/proposals/responce`;
+                axios.patch(apiEndpoint, parsedMessage, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log(`${type.charAt(0).toUpperCase() + type.slice(1)} response sent to API`);
+                })
+                .catch(error => {
+                    console.error(`Error sending ${type} response to API for topic ${topic}`);
+                });
+            } else {
+                console.error(`Unknown auction type: ${type}`);
+            }
+
+        } else {
             // console.log("Tópico no reconocido:", topic);
             return;  // Salir si el tópico no es reconocido
         }
@@ -160,9 +200,9 @@ function subscribeToTopic(topic) {
 
     mqttClient.subscribe(topic, { qos: 0 }, (err) => {
         if (err) {
-            // console.log(`Failed to subscribe to topic: ${topic}`);
+            console.log(`Failed to subscribe to topic: ${topic}`);
         } else {
-            // console.log(`Successfully subscribed to topic: ${topic}`);
+            console.log(`Successfully subscribed to topic: ${topic}`);
         }
     });
 }
@@ -172,4 +212,4 @@ subscribeToTopic("fixtures/info");
 subscribeToTopic("fixtures/validation");
 subscribeToTopic("fixtures/requests");
 subscribeToTopic("fixtures/history");
-
+subscribeToTopic("fixtures/auctions");

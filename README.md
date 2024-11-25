@@ -31,6 +31,9 @@ MQTT_PORT = 9000
 MQTT_USER = students
 MQTT_PASSWORD = iic2173-2024-2-students
 MQTT_PROTOCOL = mqtt
+
+CELERY_BROKER_URL=redis://redis-broker:6379/0
+CELERY_RESULT_BACKEND=redis://redis-broker:6379/0
 ```
 
 2. Bajar contenedores de docker si están arriba: 
