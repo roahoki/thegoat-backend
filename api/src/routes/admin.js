@@ -1,12 +1,11 @@
 const Router = require("koa-router");
 const { AdminRequest, Request, User } = require("../models"); 
 const router = new Router();
-const { User } = require('../models'); // Asegúrate de importar el modelo User
 
 const getUserById = async (userId) => {
     return await User.findOne({
         where: { id: userId },
-        attributes: ['id', 'isAdmin'], // Obtener solo los campos necesarios
+        attributes: ['id', 'isAdmin'],
     });
 };
 
@@ -186,7 +185,13 @@ router.post('/bonds/:bondId/buy', async (ctx) => {
 
 router.patch('/bonds/:bondId/discount', async (ctx) => {
     const { bondId } = ctx.params;
-    const { discount } = ctx.request.body;
+    const { userId, discount } = ctx.request.body;
+
+    if (!userId) {
+        ctx.status = 400;
+        ctx.body = { error: 'userId is required.' };
+        return;
+    }
   
     if (![10, 20, 30].includes(discount)) {
       ctx.status = 400;
@@ -195,19 +200,26 @@ router.patch('/bonds/:bondId/discount', async (ctx) => {
     }
   
     try {
-      const bond = await AdminRequest.findByPk(bondId);
+        const user = await User.findOne({ where: { id: userId } });
+        if (!user || !user.isAdmin) {
+            ctx.status = 403;
+            ctx.body = { error: 'Access denied. Admins only.' };
+            return;
+        }
+
+        const bond = await AdminRequest.findByPk(bondId);
   
-      if (!bond) {
-        ctx.status = 404;
-        ctx.body = { error: 'Bond not found' };
-        return;
-      }
-  
-      bond.discount = discount;
-      await bond.save();
-  
-      ctx.status = 200;
-      ctx.body = { message: 'Discount applied successfully.', bond };
+        if (!bond) {
+            ctx.status = 404;
+            ctx.body = { error: 'Bond not found' };
+            return;
+        }
+
+        bond.discount = discount;
+        await bond.save();
+
+        ctx.status = 200;
+        ctx.body = { message: 'Discount applied successfully.', bond };
     } catch (error) {
       console.error('Error applying discount:', error);
       ctx.status = 500;
