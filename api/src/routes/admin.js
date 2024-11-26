@@ -13,6 +13,7 @@ const getUserById = async (userId) => {
 // Obtener bonos de admin
 router.get('/bonds', async (ctx) => {
     const { userId } = ctx.query; // Obtener el userId desde los query parameters
+    console.log("ESTOY ENTRANDO ACA");
     console.log("I'm here, userId:", userId);
     try {
         // Validar que el userId esté presente
