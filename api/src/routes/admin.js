@@ -45,9 +45,9 @@ router.get('/bonds', async (ctx) => {
 });
 // Disponibilizar un bono
 router.patch('/bonds/:id/avail', async (ctx) => {
-    console.log('Request body:', ctx.request.body);
+    console.log('Request body:', ctx.query);
     const { id } = ctx.params;
-    const { userId } = ctx.query.userId || ctx.request.query.userId;; // Obtenemos el userId desde los query params
+    const { userId } = ctx.query; // Obtenemos el userId desde los query params
 
     try {
         // Validar que el userId esté presente
