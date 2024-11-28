@@ -135,6 +135,7 @@ function connectToBroker() {
         // Añade lógica para manejar los tipos de mensajes adicionales
         } else if (topic === "fixtures/auctions") {
             const { type } = parsedMessage;
+            console.log("imprimir parsedMessage", parsedMessage);
 
             if (type === "offer") {
                 // Manejar ofertas iniciales
