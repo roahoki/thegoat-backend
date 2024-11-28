@@ -12,9 +12,10 @@ const getUserById = async (userId) => {
 
 // Obtener bonos de admin
 router.get('/bonds', async (ctx) => {
-    const userId = parseInt(ctx.query.userId, 10); // Obtener el userId desde los query parameters y convertirlo a número
-    console.log("I'm here, userId:", userId);
-    console.log("I'm here, ctx.query:", ctx.query);
+    console.log('Raw query:', ctx.request.query);
+    console.log('Parsed query:', ctx.query);
+    const userId = ctx.request.query.userId || ctx.query.userId;
+    console.log('Extracted userId:', userId);
     try {
         // Validar que el userId esté presente
         if (!userId) {
