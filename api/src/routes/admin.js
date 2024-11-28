@@ -12,11 +12,6 @@ const getUserById = async (userId) => {
 
 // Obtener bonos de admin
 router.get('/bonds', async (ctx) => {
-    console.log('Full Request URL:', ctx.request.url);
-    console.log('Full Query String:', ctx.request.querystring);
-    console.log('Parsed Query Params:', ctx.query);
-    console.log('Raw Query:', ctx._querystring);
-    
     const userId = ctx.query.userId || ctx.request.query.userId;
     console.log('Attempted userId extraction:', userId);
     
@@ -40,7 +35,6 @@ router.get('/bonds', async (ctx) => {
         const adminBonds = await AdminRequest.findAll({
             where: { status: 'accepted' },
         });
-        console.log("I'm looking for the adminBonds:", adminBonds);
         ctx.status = 200;
         ctx.body = { adminBonds };
     } catch (error) {
