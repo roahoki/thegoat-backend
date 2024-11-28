@@ -12,7 +12,7 @@ const getUserById = async (userId) => {
 
 // Obtener bonos de admin
 router.get('/bonds', async (ctx) => {
-    const { userId } = ctx.query.userId; // Obtener el userId desde los query parameters
+    const userId = parseInt(ctx.query.userId, 10); // Obtener el userId desde los query parameters y convertirlo a número
     console.log("I'm here, userId:", userId);
     console.log("I'm here, ctx.query:", ctx.query);
     try {
