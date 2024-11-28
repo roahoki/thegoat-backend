@@ -14,6 +14,7 @@ const getUserById = async (userId) => {
 router.get('/bonds', async (ctx) => {
     const { userId } = ctx.query; // Obtener el userId desde los query parameters
     console.log("I'm here, userId:", userId);
+    console.log("I'm here, ctx.query:", ctx.query);
     try {
         // Validar que el userId esté presente
         if (!userId) {
@@ -34,7 +35,7 @@ router.get('/bonds', async (ctx) => {
         const adminBonds = await AdminRequest.findAll({
             where: { status: 'accepted' },
         });
-        console.log("adminBonds:", adminBonds);
+        console.log("I'm looking for adminBonds:", adminBonds);
         ctx.status = 200;
         ctx.body = { adminBonds };
     } catch (error) {
