@@ -12,10 +12,14 @@ const getUserById = async (userId) => {
 
 // Obtener bonos de admin
 router.get('/bonds', async (ctx) => {
-    console.log('Query Params:', ctx.query);
-    console.log('Body Params:', ctx.request.body);
-    const userId = ctx.query;
-    console.log('Extracted userId:', userId);
+    console.log('Full Request URL:', ctx.request.url);
+    console.log('Full Query String:', ctx.request.querystring);
+    console.log('Parsed Query Params:', ctx.query);
+    console.log('Raw Query:', ctx._querystring);
+    
+    const userId = ctx.query.userId || ctx.request.query.userId;
+    console.log('Attempted userId extraction:', userId);
+    
     try {
         // Validar que el userId esté presente
         if (!userId) {
