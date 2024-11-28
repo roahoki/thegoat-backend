@@ -14,7 +14,7 @@ const getUserById = async (userId) => {
 router.get('/bonds', async (ctx) => {
     console.log('Query Params:', ctx.query);
     console.log('Body Params:', ctx.request.body);
-    const userId = ctx.request.query.userId || ctx.request.body.userId;;
+    const userId = ctx.query;
     console.log('Extracted userId:', userId);
     try {
         // Validar que el userId esté presente
