@@ -154,10 +154,12 @@ function connectToBroker() {
             } else if (type === "proposal") {
                 // Manejar propuestas
                 apiEndpoint = `${api}/auctions/proposals`;
+                console.log(parsedMessage);
                 axios.post(apiEndpoint, parsedMessage, {
                     headers: {
                         'Content-Type': 'application/json'
                     }
+                    
                 })
                 .then(response => {
                     console.log('Proposal sent to API');
