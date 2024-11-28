@@ -297,6 +297,7 @@ router.get("/my-offers", async (ctx) => {
 router.post("/proposals", async (ctx) => {
     try {
         const proposalData = ctx.request.body;
+        console.log("Proposal data:", proposalData);
 
         // Buscar la subasta correspondiente al auction_id
         const auction = await AuctionOffer.findOne({
