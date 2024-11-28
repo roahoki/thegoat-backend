@@ -45,8 +45,9 @@ router.get('/bonds', async (ctx) => {
 });
 // Disponibilizar un bono
 router.patch('/bonds/:id/avail', async (ctx) => {
+    console.log('Request body:', ctx.request.body);
     const { id } = ctx.params;
-    const { userId } = ctx.query.userId || ctx.request.query.userId; // Obtenemos el userId desde los query params
+    const { userId } = ctx.query.userId || ctx.request.query.userId;; // Obtenemos el userId desde los query params
 
     try {
         // Validar que el userId esté presente
@@ -72,10 +73,9 @@ router.patch('/bonds/:id/avail', async (ctx) => {
             return;
         }
 
-        console.log(`Updating bond status for bond ID: ${id}`);
+        // Actualizar el estado del bono
         bond.status = 'available';
         await bond.save();
-        console.log(`Bond status updated successfully for bond ID: ${id}`);
 
         ctx.status = 200;
         ctx.body = { message: 'Bond has been made available', bond };
