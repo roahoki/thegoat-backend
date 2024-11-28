@@ -35,7 +35,7 @@ router.get('/bonds', async (ctx) => {
         const adminBonds = await AdminRequest.findAll({
             where: { status: 'accepted' },
         });
-        console.log("I'm looking for adminBonds:", adminBonds);
+        console.log("I'm looking for the adminBonds:", adminBonds);
         ctx.status = 200;
         ctx.body = { adminBonds };
     } catch (error) {
