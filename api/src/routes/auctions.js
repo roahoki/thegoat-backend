@@ -1,5 +1,3 @@
-// PENDIENTE CHECKEAR EN TODAS ESTAS RUTAS SI ES ADMIN O NO
-
 const Router = require("koa-router");
 const { AuctionOffer, AdminRequest } = require("../models");
 const { v4: uuidv4 } = require('uuid');
