@@ -112,7 +112,12 @@ router.get("/offers", async (ctx) => {
 // Endpoint para guardar propuestas de los otros grupos a mis subastas, lo llama el listener
 router.post("/proposals", async (ctx) => {
     try {
+
         const proposalData = ctx.request.body;
+
+        if (proposalData.group_id == "15") {
+            return;
+        }
 
         // Buscar la subasta correspondiente al auction_id
         const auction = await AuctionOffer.findOne({
