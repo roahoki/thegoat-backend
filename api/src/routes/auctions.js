@@ -109,6 +109,48 @@ router.get("/offers", async (ctx) => {
     }
 });
 
+// Endpoint para guardar propuestas de los otros grupos a mis subastas, lo llama el listener
+router.post("/proposals", async (ctx) => {
+    try {
+        const proposalData = ctx.request.body;
+
+        // Buscar la subasta correspondiente al auction_id
+        const auction = await AuctionOffer.findOne({
+            where: {
+                auction_id: proposalData.auction_id,
+                group_id: 15, 
+                type: "offer", 
+            },
+        });
+
+        // Si no se encuentra la subasta o no pertenece a mi grupo, ignorar la propuesta
+        if (!auction) {
+            ctx.status = 400; // Bad Request
+            ctx.body = { error: "This auction does not belong to your group." };
+            return;
+        }
+
+        // Crear la propuesta si la subasta pertenece a mi grupo
+        await AuctionOffer.create({
+            auction_id: proposalData.auction_id,
+            proposal_id: proposalData.proposal_id,
+            fixture_id: proposalData.fixture_id,
+            league_name: proposalData.league_name,
+            round: proposalData.round,
+            result: proposalData.result,
+            quantity: proposalData.quantity,
+            group_id: proposalData.group_id,
+            type: "proposal",
+        });
+
+        ctx.status = 201;
+        ctx.body = { message: "Proposal saved successfully." };
+    } catch (error) {
+        console.error("Error saving proposal:", error);
+        ctx.status = 500;
+        ctx.body = { error: "Failed to save proposal." };
+    }
+});
 
 // Poner un bono en subasta
 router.post("/:bondId", async (ctx) => {
@@ -290,50 +332,6 @@ router.get("/my-offers", async (ctx) => {
     }
 });
 
-
-// Endpoint para guardar propuestas de los otros grupos a mis subastas, lo llama el listener
-router.post("/proposals", async (ctx) => {
-    try {
-        const proposalData = ctx.request.body;
-        console.log("Proposal data:", proposalData);
-
-        // Buscar la subasta correspondiente al auction_id
-        const auction = await AuctionOffer.findOne({
-            where: {
-                auction_id: proposalData.auction_id,
-                group_id: 15, 
-                type: "offer", 
-            },
-        });
-
-        // Si no se encuentra la subasta o no pertenece a mi grupo, ignorar la propuesta
-        if (!auction) {
-            ctx.status = 400; // Bad Request
-            ctx.body = { error: "This auction does not belong to your group." };
-            return;
-        }
-
-        // Crear la propuesta si la subasta pertenece a mi grupo
-        await AuctionOffer.create({
-            auction_id: proposalData.auction_id,
-            proposal_id: proposalData.proposal_id,
-            fixture_id: proposalData.fixture_id,
-            league_name: proposalData.league_name,
-            round: proposalData.round,
-            result: proposalData.result,
-            quantity: proposalData.quantity,
-            group_id: proposalData.group_id,
-            type: "proposal",
-        });
-
-        ctx.status = 201;
-        ctx.body = { message: "Proposal saved successfully." };
-    } catch (error) {
-        console.error("Error saving proposal:", error);
-        ctx.status = 500;
-        ctx.body = { error: "Failed to save proposal." };
-    }
-});
 
 // Endpoint para manejar respuestas a propuestas que yo hice (me aceptan o rechazan mediante el listener)
 router.patch("/proposals/responce", async (ctx) => {
