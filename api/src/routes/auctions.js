@@ -332,6 +332,7 @@ router.get("/my-offers", async (ctx) => {
     }
 });
 
+
 // Endpoint para manejar respuestas a propuestas que yo hice (me aceptan o rechazan mediante el listener)
 router.patch("/proposals/responce", async (ctx) => {
     const transaction = await sequelize.transaction();

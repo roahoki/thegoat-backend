@@ -12,8 +12,9 @@ const getUserById = async (userId) => {
 
 // Obtener bonos de admin
 router.get('/bonds', async (ctx) => {
-    const { userId } = ctx.query; // Obtener el userId desde los query parameters
-
+    const userId = ctx.query.userId || ctx.request.query.userId;
+    console.log('Attempted userId extraction:', userId);
+    
     try {
         // Validar que el userId esté presente
         if (!userId) {
@@ -34,7 +35,6 @@ router.get('/bonds', async (ctx) => {
         const adminBonds = await AdminRequest.findAll({
             where: { status: 'accepted' },
         });
-
         ctx.status = 200;
         ctx.body = { adminBonds };
     } catch (error) {
@@ -45,6 +45,7 @@ router.get('/bonds', async (ctx) => {
 });
 // Disponibilizar un bono
 router.patch('/bonds/:id/avail', async (ctx) => {
+    console.log('Request body:', ctx.query);
     const { id } = ctx.params;
     const { userId } = ctx.query; // Obtenemos el userId desde los query params
 

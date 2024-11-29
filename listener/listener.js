@@ -15,7 +15,7 @@ const protocol = process.env.MQTT_PROTOCOL;
 const api = process.env.API_URL;
 
 function connectToBroker() {
-    const clientId = "client_THEGOATCATA";
+    const clientId = "client_THEGOATEC3";
     const hostURL = `${protocol}://${mqttHost}:${port}`;
 
     const options = {
@@ -154,10 +154,12 @@ function connectToBroker() {
             } else if (type === "proposal") {
                 // Manejar propuestas
                 apiEndpoint = `${api}/auctions/proposals`;
+                console.log(parsedMessage);
                 axios.post(apiEndpoint, parsedMessage, {
                     headers: {
                         'Content-Type': 'application/json'
                     }
+                    
                 })
                 .then(response => {
                     console.log('Proposal sent to API');

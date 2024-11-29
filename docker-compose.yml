@@ -1,8 +1,8 @@
 services:
 # Listener Service
   listener:
-    #image: public.ecr.aws/h8q2k9k3/thegoat-backend:listener-latest
-    build: ./listener
+    image: public.ecr.aws/h8q2k9k3/thegoat-backend:listener-latest
+    #build: ./listener
     depends_on:
       - api
     networks:
@@ -13,8 +13,8 @@ services:
 
 # Main Backend
   api:
-    build: ./api
-    #image: public.ecr.aws/h8q2k9k3/thegoat-backend:api-latest
+    #build: ./api
+    image: public.ecr.aws/h8q2k9k3/thegoat-backend:api-latest
     ports:
       - "3000:3000"
     environment:
