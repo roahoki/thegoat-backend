@@ -1,5 +1,5 @@
 const Router = require("koa-router");
-const { AuctionOffer, AdminRequest } = require("../models");
+const { AuctionOffer, AdminRequest, Fixture } = require("../models");
 const { v4: uuidv4 } = require('uuid');
 const mqtt = require('mqtt');
 const checkAdmin = require('../config/checkAdmin');
@@ -378,6 +378,16 @@ router.patch("/proposals/responce", async (ctx) => {
 
             await offeredBond.destroy({ transaction });
 
+            const fixture = await Fixture.findOne({
+                where: { id: auction.fixture_id },
+                attributes: ['date', 'datetime'], 
+                transaction
+            });
+            
+            if (!fixture) {
+                console.log(`Fixture con id ${auction.fixture_id} no encontrado.`);
+            }
+
             // Transferir los bonos ofrecidos en la subasta al usuario
             await AdminRequest.create({
                 fixture_id: auction.fixture_id,
@@ -389,6 +399,9 @@ router.patch("/proposals/responce", async (ctx) => {
                 seller: "15",
                 status: "accepted",
                 wallet: true,
+                group_id: "15",
+                date: fixture.date,
+                datetime: fixture.datetime,
             }, { transaction });
         }
 
@@ -460,7 +473,7 @@ router.get("/proposals", async (ctx) => {
     }
 });
 
-
+// Endpoint que llama el front para responder a propuestas de otros grupos
 router.patch("/proposals/respond", async (ctx) => {
     try {
         const { userId } = ctx.query; // Obtener el userId desde los query params
@@ -511,6 +524,10 @@ router.patch("/proposals/respond", async (ctx) => {
             type: type,
         };
 
+        // Enviar mensaje al canal MQTT
+        mqttClient.publish("fixtures/auctions", JSON.stringify(responseMessage));
+        console.log("message published:", responseMessage);
+
         if (type === "acceptance") {
             // Manejar intercambio de bonos
             const offeredBond = await AdminRequest.findByPk(proposal.request_id); // Bono ofrecido
@@ -529,8 +546,6 @@ router.patch("/proposals/respond", async (ctx) => {
 
             await auctionBond.destroy();
 
-            await offeredBond.destroy();
-
             // Crear registro de nuevos bonos del admin
             await AdminRequest.create({
                 fixture_id: offeredBond.fixture_id,
@@ -544,10 +559,9 @@ router.patch("/proposals/respond", async (ctx) => {
                 group_id: 15,
                 datetime: offeredBond.datetime,
             });
-        }
 
-        // Enviar mensaje al canal MQTT
-        mqttClient.publish("fixtures/auctions", JSON.stringify(responseMessage));
+            await offeredBond.destroy();
+        }
 
         ctx.status = 200;
         ctx.body = { message: `Proposal ${type} successfully.` };
