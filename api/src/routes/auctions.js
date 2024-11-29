@@ -196,6 +196,7 @@ router.post("/:bondId", async (ctx) => {
         const auctionId = uuidv4();
         const auctionMessage = {
             auction_id: auctionId,
+            proposal_id: "",
             fixture_id: bond.fixture_id,
             league_name: bond.league_name,
             round: bond.round,
