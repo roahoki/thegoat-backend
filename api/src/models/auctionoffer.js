@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
             auction_id: {
                 type: DataTypes.UUID,
                 allowNull: false,
+                primarykey: true,
             },
             proposal_id: {
                 type: DataTypes.UUID,
