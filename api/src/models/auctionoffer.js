@@ -7,10 +7,15 @@ module.exports = (sequelize, DataTypes) => {
     }
     AuctionOffer.init(
         {
+            id: {
+                allowNull: false,
+                autoIncrement: true,
+                primaryKey: true,
+                type: DataTypes.INTEGER,
+            },
             auction_id: {
                 type: DataTypes.UUID,
                 allowNull: false,
-                primarykey: true,
             },
             proposal_id: {
                 type: DataTypes.UUID,
