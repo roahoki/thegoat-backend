@@ -538,6 +538,9 @@ router.patch("/proposals/respond", async (ctx) => {
                 },
             });
 
+            console.log(offeredBond, "offeredBond");
+            console.log(auctionBond, "auctionBond");
+
             if (!offeredBond || !auctionBond) {
                 ctx.status = 400;
                 ctx.body = { error: "Bond details not found." };
@@ -545,6 +548,7 @@ router.patch("/proposals/respond", async (ctx) => {
             }
 
             await auctionBond.destroy();
+            console.log("auction bond destuido");
 
             // Crear registro de nuevos bonos del admin
             await AdminRequest.create({
@@ -560,7 +564,10 @@ router.patch("/proposals/respond", async (ctx) => {
                 datetime: offeredBond.datetime,
             });
 
+            console.log("adminrequest creada");
+
             await offeredBond.destroy();
+            console.log("offered bond destruido");
         }
 
         ctx.status = 200;
