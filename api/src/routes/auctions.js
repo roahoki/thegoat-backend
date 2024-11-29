@@ -535,12 +535,6 @@ router.patch("/proposals/respond", async (ctx) => {
 
         if (type === "acceptance") {
             // Manejar intercambio de bonos
-            console.log(proposal.request_id, "request_id");
-            const offeredBond = await AdminRequest.findOne({
-                where: {
-                    request_id: proposal.request_id
-                }
-            });
 
             const auctionBond = await AuctionOffer.findOne({
                 where: {
@@ -548,31 +542,39 @@ router.patch("/proposals/respond", async (ctx) => {
                     type: "offer",
                 },
             });
-
-            console.log(offeredBond, "offeredBond"); // MALO ESTA NULOOO
             console.log(auctionBond, "auctionBond");
 
-            if (!offeredBond || !auctionBond) {
+            if (!auctionBond) {
                 ctx.status = 400;
                 ctx.body = { error: "Bond details not found." };
                 return;
             }
 
             await auctionBond.destroy();
-            console.log("auction bond destuido");
+            console.log("auction bond destruido");
+
+            const fixture = await Fixture.findOne({
+                where: { id: proposal.fixture_id },
+                attributes: ['date'],
+                transaction
+            });
+            
+            if (!fixture) {
+                console.log(`Fixture con id ${auction.fixture_id} no encontrado.`);
+            }
 
             // Crear registro de nuevos bonos del admin
             await AdminRequest.create({
-                fixture_id: offeredBond.fixture_id,
-                league_name: offeredBond.league_name,
-                round: offeredBond.round,
-                date: offeredBond.date,
-                result: offeredBond.result,
+                fixture_id: proposal.fixture_id,
+                league_name: proposal.league_name,
+                round: proposal.round,
+                date: fixture.date,
+                result: proposal.result,
                 quantity: proposal.quantity,
                 status: "accepted",
-                wallet: offeredBond.wallet,
+                wallet: true,
                 group_id: 15,
-                datetime: offeredBond.datetime,
+                datetime: "datetime",
             });
 
             console.log("adminrequest creada");
