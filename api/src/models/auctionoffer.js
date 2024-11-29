@@ -20,7 +20,21 @@ module.exports = (sequelize, DataTypes) => {
             proposal_id: {
                 type: DataTypes.UUID,
                 allowNull: true,
-            },
+                validate: {
+                    isUUIDorEmpty(value) {
+                        if (value !== null && value !== "" && !/^[0-9a-fA-F-]{36}$/.test(value)) {
+                            throw new Error("proposal_id must be a valid UUID or an empty string");
+                        }
+                    },
+                },
+                set(value) {
+                    if (value === "") {
+                        this.setDataValue("proposal_id", null);
+                    } else {
+                        this.setDataValue("proposal_id", value);
+                    }
+                },
+            },            
             fixture_id: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
