@@ -385,7 +385,7 @@ router.patch("/proposals/responce", async (ctx) => {
 
             const fixture = await Fixture.findOne({
                 where: { id: auction.fixture_id },
-                attributes: ['date', 'datetime'], 
+                attributes: ['date'],
                 transaction
             });
             
@@ -406,7 +406,7 @@ router.patch("/proposals/responce", async (ctx) => {
                 wallet: true,
                 group_id: "15",
                 date: fixture.date,
-                datetime: fixture.datetime,
+                datetime: "datetime",
             }, { transaction });
         }
 
@@ -535,7 +535,13 @@ router.patch("/proposals/respond", async (ctx) => {
 
         if (type === "acceptance") {
             // Manejar intercambio de bonos
-            const offeredBond = await AdminRequest.findByPk(proposal.request_id); // Bono ofrecido
+            console.log(proposal.request_id, "request_id");
+            const offeredBond = await AdminRequest.findOne({
+                where: {
+                    request_id: proposal.request_id
+                }
+            });
+
             const auctionBond = await AuctionOffer.findOne({
                 where: {
                     auction_id: proposal.auction_id,
@@ -543,7 +549,7 @@ router.patch("/proposals/respond", async (ctx) => {
                 },
             });
 
-            console.log(offeredBond, "offeredBond");
+            console.log(offeredBond, "offeredBond"); // MALO ESTA NULOOO
             console.log(auctionBond, "auctionBond");
 
             if (!offeredBond || !auctionBond) {
