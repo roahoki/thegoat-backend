@@ -555,8 +555,7 @@ router.patch("/proposals/respond", async (ctx) => {
 
             const fixture = await Fixture.findOne({
                 where: { id: proposal.fixture_id },
-                attributes: ['date'],
-                transaction
+                attributes: ['date']
             });
             
             if (!fixture) {
